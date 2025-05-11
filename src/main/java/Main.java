@@ -20,7 +20,7 @@ public class Main {
                     continue;
                 case TYPE:
                     String cmd = tokens[1].split(" ")[0];
-                    System.out.println(BuiltIn.parse(cmd) == null ? cmd + ": command not found" : cmd + " is a shell builtin");
+                    System.out.println(BuiltIn.parse(cmd) == null ? cmd + ": not found" : cmd + " is a shell builtin");
                     continue;
                 case null:
                 default:
