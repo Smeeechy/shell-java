@@ -20,7 +20,22 @@ public class Main {
                     continue;
                 case TYPE:
                     String cmd = tokens[1].split(" ")[0];
-                    System.out.println(BuiltIn.parse(cmd) == null ? cmd + ": not found" : cmd + " is a shell builtin");
+
+                    // check if builtin
+                    BuiltIn builtIn = BuiltIn.parse(cmd);
+                    if (builtIn != null) {
+                        System.out.println(cmd + " is a shell builtin");
+                        continue;
+                    }
+
+                    // check if executable found in PATH
+                    String executablePath = PathScanner.findExecutablePath(cmd);
+                    if (executablePath != null) {
+                        System.out.println(cmd + " is " + executablePath);
+                        continue;
+                    }
+
+                    System.out.println(cmd + ": not found");
                     continue;
                 case null:
                 default:
