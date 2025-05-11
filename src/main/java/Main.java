@@ -10,16 +10,21 @@ public class Main {
             if (input.isBlank()) continue;
 
             String[] tokens = input.split(" ", 2);
-            String command = tokens[0];
+            BuiltIn command = BuiltIn.parse(tokens[0]);
 
             switch (command) {
-                case "exit":
+                case EXIT:
                     System.exit(0);
-                case "echo":
+                case ECHO:
                     System.out.println(tokens[1]);
                     continue;
+                case TYPE:
+                    String cmd = tokens[1].split(" ")[0];
+                    System.out.println(BuiltIn.parse(cmd) == null ? cmd + ": command not found" : cmd + " is a shell builtin");
+                    continue;
+                case null:
                 default:
-                    System.out.println(command + ": command not found");
+                    System.out.println(tokens[0] + ": command not found");
             }
         }
     }
