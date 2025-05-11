@@ -7,9 +7,20 @@ public class Main {
             Scanner scanner = new Scanner(System.in);
             String input = scanner.nextLine();
 
-            if (input.equals("exit 0")) System.exit(0);
+            if (input.isBlank()) continue;
 
-            System.out.println(input + ": command not found");
+            String[] tokens = input.split(" ", 2);
+            String command = tokens[0];
+
+            switch (command) {
+                case "exit":
+                    System.exit(0);
+                case "echo":
+                    System.out.println(tokens[1]);
+                    continue;
+                default:
+                    System.out.println(command + ": command not found");
+            }
         }
     }
 }
