@@ -6,11 +6,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class PathScanner {
-    private static final String[] PATH_DIRS = System.getenv("PATH").split(":");
-    private static final Map<String, String> CMD_TO_EXECUTABLE_PATH = new HashMap<>();
+    private final Map<String, String> CMD_TO_EXECUTABLE_PATH = new HashMap<>();
 
-    static {
-        for (String dir : PATH_DIRS) {
+    public PathScanner() {
+        String[] pathDirs = System.getenv("PATH").split(":");
+        for (String dir : pathDirs) {
             final Path path = Path.of(dir);
             if (!Files.isDirectory(path)) continue;
             try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(path, Files::isExecutable)) {
@@ -23,7 +23,7 @@ public class PathScanner {
         }
     }
 
-    public static String findExecutablePath(String command) {
+    public String findExecutablePath(String command) {
         return CMD_TO_EXECUTABLE_PATH.get(command);
     }
 }
