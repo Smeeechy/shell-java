@@ -5,11 +5,12 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Main {
+    private static final Scanner SCANNER = new Scanner(System.in);
+
     public static void main(String[] args) throws Exception {
         while (true) {
             System.out.print("$ ");
-            Scanner scanner = new Scanner(System.in);
-            String input = scanner.nextLine();
+            String input = SCANNER.nextLine();
             if (input.isBlank()) continue;
             String[] tokens = input.split(" ", 2);
 
@@ -24,34 +25,31 @@ public class Main {
             // check if command is external
             String executablePath = PathScanner.findExecutablePath(tokens[0]);
             if (executablePath != null) {
-                List<String> command = new ArrayList<>();
-                command.add(tokens[0]);
-                if (tokens.length > 1) {
-                    final List<String> arguments = parseArgs(tokens[1]);
-                    command.addAll(arguments);
-                }
-                try {
-                    Process process = new ProcessBuilder(command).start();
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        System.out.println(line);
-                    }
-                    int exitCode = process.waitFor();
-                    if (exitCode != 0) {
-                        BufferedReader error = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                        String errorLine;
-                        while ((errorLine = error.readLine()) != null) {
-                            System.err.println(errorLine);
-                        }
-                    }
-                } catch (Exception e) {
-                    System.err.println("Error executing " + tokens[0] + ": " + e.getMessage());
-                }
+                execute(tokens);
                 continue;
             }
 
             System.err.println(tokens[0] + ": command not found");
+        }
+    }
+
+    private static void execute(String[] tokens) {
+        List<String> command = new ArrayList<>();
+        command.add(tokens[0]);
+        if (tokens.length > 1) {
+            final List<String> arguments = parseArgs(tokens[1]);
+            command.addAll(arguments);
+        }
+        try {
+            Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+            process.waitFor();
+        } catch (Exception e) {
+            System.err.println("Error executing " + tokens[0] + ": " + e.getMessage());
         }
     }
 
