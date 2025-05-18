@@ -122,7 +122,7 @@ public class Shell {
         }
 
         if (directory.startsWith("~")) {
-            directory = directory.replaceFirst("~", System.getProperty("user.home"));
+            directory = directory.replaceFirst("~", System.getenv("HOME"));
         }
 
         if (directory.equals("..")) {
