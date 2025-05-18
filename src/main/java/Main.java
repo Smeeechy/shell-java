@@ -51,7 +51,7 @@ public class Main {
                 continue;
             }
 
-            System.err.println("Unknown command: " + tokens[0]);
+            System.err.println(tokens[0] + ": command not found");
         }
     }
 
