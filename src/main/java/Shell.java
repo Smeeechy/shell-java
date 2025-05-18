@@ -6,12 +6,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Shell {
+    private final PathScanner PATH_SCANNER;
+
     private Path currentWorkingDirectory;
-    private PathScanner pathScanner;
 
     public Shell() {
+        this.PATH_SCANNER = new PathScanner();
         this.currentWorkingDirectory = Path.of(System.getProperty("user.dir"));
-        this.pathScanner = new PathScanner();
     }
 
     public void execute(String command) {
@@ -27,7 +28,7 @@ public class Shell {
         }
 
         // try to execute external program
-        if (pathScanner.findExecutablePath(cmd) != null) {
+        if (PATH_SCANNER.findExecutablePath(cmd) != null) {
             executeExternal(cmd, args);
             return;
         }
@@ -55,53 +56,6 @@ public class Shell {
             default:
                 System.err.println(builtIn + ": command not found");
         }
-    }
-
-    private void changeDirectory(String directory) {
-        String[] args = directory.split(" ");
-        if (args.length != 1) {
-            System.err.println("cd: too many arguments");
-            return;
-        }
-
-        Path directoryPath;
-        try {
-            directoryPath = Path.of(directory);
-        } catch (Exception ignored) {
-            System.err.println("Error parsing path: " + directory);
-            return;
-        }
-
-        if (!Files.exists(directoryPath)) {
-            System.err.println("cd: " + directory + ": No such file or directory");
-            return;
-        }
-
-        if (!Files.isDirectory(directoryPath)) {
-            System.err.println("cd: " + directory + ": Not a directory");
-            return;
-        }
-
-        this.currentWorkingDirectory = directoryPath;
-    }
-
-    private void printType(String args) {
-        if (args == null || args.isBlank()) return;
-
-        String cmd = args.split(" ")[0];
-
-        if (BuiltIn.parse(cmd) != null) {
-            System.out.println(cmd + " is a shell builtin");
-            return;
-        }
-
-        String executablePath = pathScanner.findExecutablePath(cmd);
-        if (executablePath != null) {
-            System.out.println(cmd + " is " + executablePath);
-            return;
-        }
-
-        System.err.println(cmd + ": not found");
     }
 
     private void executeExternal(String command, String args) {
@@ -157,5 +111,71 @@ public class Shell {
         }
         if (!builder.isEmpty()) arguments.add(builder.toString());
         return arguments;
+    }
+
+    private void changeDirectory(String directory) {
+        directory = directory.trim();
+        String[] args = directory.split(" ");
+        if (args.length != 1) {
+            System.err.println("cd: too many arguments");
+            return;
+        }
+
+        if (directory.equals("..")) {
+            directory = currentWorkingDirectory.toAbsolutePath().getParent().toString();
+        }
+
+        if (directory.startsWith("../")) {
+            Path tempWorkingDirectory = Path.of(currentWorkingDirectory.toUri());
+            while (directory.startsWith("../")) {
+                directory = directory.replaceFirst("\\.\\./", "");
+                tempWorkingDirectory = tempWorkingDirectory.getParent();
+                if (tempWorkingDirectory == null) tempWorkingDirectory = Path.of("/");
+            }
+            directory = tempWorkingDirectory.toAbsolutePath() + directory;
+        }
+
+        if (directory.startsWith(".")) {
+            directory = directory.replaceFirst("\\.", currentWorkingDirectory.toString());
+        }
+
+        Path directoryPath;
+        try {
+            directoryPath = Path.of(directory);
+        } catch (Exception ignored) {
+            System.err.println("Error parsing path: " + directory);
+            return;
+        }
+
+        if (!Files.exists(directoryPath)) {
+            System.err.println("cd: " + directory + ": No such file or directory");
+            return;
+        }
+
+        if (!Files.isDirectory(directoryPath)) {
+            System.err.println("cd: " + directory + ": Not a directory");
+            return;
+        }
+
+        this.currentWorkingDirectory = directoryPath;
+    }
+
+    private void printType(String args) {
+        if (args == null || args.isBlank()) return;
+
+        String cmd = args.split(" ")[0];
+
+        if (BuiltIn.parse(cmd) != null) {
+            System.out.println(cmd + " is a shell builtin");
+            return;
+        }
+
+        String executablePath = PATH_SCANNER.findExecutablePath(cmd);
+        if (executablePath != null) {
+            System.out.println(cmd + " is " + executablePath);
+            return;
+        }
+
+        System.err.println(cmd + ": not found");
     }
 }
