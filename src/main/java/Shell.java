@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,9 +49,40 @@ public class Shell {
             case PWD:
                 System.out.println(currentWorkingDirectory.toAbsolutePath());
                 return;
+            case CD:
+                changeDirectory(args);
+                return;
             default:
-                System.out.println(builtIn + ": command not found");
+                System.err.println(builtIn + ": command not found");
         }
+    }
+
+    private void changeDirectory(String directory) {
+        String[] args = directory.split(" ");
+        if (args.length != 1) {
+            System.err.println("cd: too many arguments");
+            return;
+        }
+
+        Path directoryPath;
+        try {
+            directoryPath = Path.of(directory);
+        } catch (Exception ignored) {
+            System.err.println("Error parsing path: " + directory);
+            return;
+        }
+
+        if (!Files.exists(directoryPath)) {
+            System.err.println("cd: " + directory + ": No such file or directory");
+            return;
+        }
+
+        if (!Files.isDirectory(directoryPath)) {
+            System.err.println("cd: " + directory + ": Not a directory");
+            return;
+        }
+
+        this.currentWorkingDirectory = directoryPath;
     }
 
     private void printType(String args) {
@@ -69,7 +101,7 @@ public class Shell {
             return;
         }
 
-        System.out.println(cmd + ": not found");
+        System.err.println(cmd + ": not found");
     }
 
     private void executeExternal(String command, String args) {
@@ -80,7 +112,10 @@ public class Shell {
             commandList.addAll(arguments);
         }
         try {
-            Process process = new ProcessBuilder(commandList).redirectErrorStream(true).start();
+            Process process = new ProcessBuilder(commandList)
+                    .directory(currentWorkingDirectory.toFile())
+                    .redirectErrorStream(true)
+                    .start();
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
             while ((line = reader.readLine()) != null) System.out.println(line);

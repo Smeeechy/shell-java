@@ -2,7 +2,8 @@ public enum BuiltIn {
     EXIT,
     ECHO,
     TYPE,
-    PWD;
+    PWD,
+    CD;
 
     public static BuiltIn parse(String string) {
         return switch (string.toUpperCase()) {
@@ -10,6 +11,7 @@ public enum BuiltIn {
             case "ECHO" -> ECHO;
             case "TYPE" -> TYPE;
             case "PWD" -> PWD;
+            case "CD" -> CD;
             default -> null;
         };
     }
