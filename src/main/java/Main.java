@@ -46,12 +46,12 @@ public class Main {
                         }
                     }
                 } catch (Exception e) {
-                    System.out.println("Error executing " + tokens[0] + ": " + e.getMessage());
+                    System.err.println("Error executing " + tokens[0] + ": " + e.getMessage());
                 }
                 continue;
             }
 
-            System.out.println("Unknown command: " + tokens[0]);
+            System.err.println("Unknown command: " + tokens[0]);
         }
     }
 
