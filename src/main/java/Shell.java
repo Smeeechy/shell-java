@@ -121,6 +121,10 @@ public class Shell {
             return;
         }
 
+        if (directory.startsWith("~")) {
+            directory = directory.replaceFirst("~", System.getProperty("user.home"));
+        }
+
         if (directory.equals("..")) {
             directory = currentWorkingDirectory.toAbsolutePath().getParent().toString();
         }
