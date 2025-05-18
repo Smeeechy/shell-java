@@ -25,7 +25,7 @@ public class Main {
             String executablePath = PathScanner.findExecutablePath(tokens[0]);
             if (executablePath != null) {
                 List<String> command = new ArrayList<>();
-                command.add(executablePath);
+                command.add(tokens[0]);
                 if (tokens.length > 1) {
                     final List<String> arguments = parseArgs(tokens[1]);
                     command.addAll(arguments);
