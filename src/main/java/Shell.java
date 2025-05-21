@@ -109,20 +109,41 @@ public class Shell {
      */
     private List<String> parseArgs(String argsString) {
         if (argsString == null || argsString.isEmpty()) return new ArrayList<>();
-        argsString = argsString.trim().replace('\'', '\"');
 
         List<String> arguments = new ArrayList<>();
         int index = 0;
         StringBuilder builder = new StringBuilder();
-        boolean insideString = false;
+        boolean withinSingleQuotes = false;
+        boolean withinDoubleQuotes = false;
         while (index < argsString.length()) {
             char charAtIndex = argsString.charAt(index);
             switch (charAtIndex) {
+                case '\\':
+                    if (withinDoubleQuotes && index + 1 < argsString.length()) {
+                        char nextChar = argsString.charAt(index + 1);
+                        switch (nextChar) {
+                            case '\\':
+                            case '$':
+                            case '\"':
+                            case '\n':
+                                builder.append(nextChar);
+                                index++;
+                                break;
+                            default:
+                                builder.append(charAtIndex);
+                        }
+                    } else builder.append(charAtIndex);
+                    break;
+                case '\'':
+                    if (withinDoubleQuotes) builder.append(charAtIndex);
+                    else withinSingleQuotes = !withinSingleQuotes;
+                    break;
                 case '\"':
-                    insideString = !insideString;
+                    if (withinSingleQuotes) builder.append(charAtIndex);
+                    else withinDoubleQuotes = !withinDoubleQuotes;
                     break;
                 case ' ':
-                    if (insideString) {
+                    if (withinSingleQuotes || withinDoubleQuotes) {
                         builder.append(charAtIndex);
                     } else if (!builder.isEmpty()) {
                         arguments.add(builder.toString().trim());
