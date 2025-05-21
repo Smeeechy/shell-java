@@ -26,20 +26,19 @@ public class Shell {
      * @param command The raw input string containing commands, subcommands, and any relevant arguments.
      */
     public void execute(String command) {
-        String[] tokens = command.split(" ", 2);
-        String cmd = tokens[0];
-        String args = tokens.length > 1 ? tokens[1] : null;
+        List<String> arguments = parseArgs(command);
+        String cmd = arguments.getFirst();
 
         // check for and execute builtin
         BuiltIn builtIn = BuiltIn.parse(cmd);
         if (builtIn != null) {
-            executeBuiltIn(builtIn, args);
+            executeBuiltIn(arguments);
             return;
         }
 
         // check for and execute external program
         if (PATH_SCANNER.findExecutablePath(cmd) != null) {
-            executeExternal(cmd, args);
+            executeExternal(arguments);
             return;
         }
 
@@ -53,22 +52,26 @@ public class Shell {
      * @param builtIn The builtin command to execute
      * @param args    a single string containing all relevant command arguments
      */
-    private void executeBuiltIn(BuiltIn builtIn, String args) {
+    private void executeBuiltIn(List<String> arguments) {
+        BuiltIn builtIn = BuiltIn.parse(arguments.removeFirst());
         switch (builtIn) {
             case EXIT:
                 System.exit(0);
             case ECHO:
-                System.out.println(String.join(" ", parseArgs(args)));
+                System.out.println(String.join(" ", arguments));
                 return;
             case TYPE:
-                printType(args);
+                if (arguments.isEmpty()) return;
+                printType(arguments.getFirst());
                 return;
             case PWD:
                 System.out.println(currentWorkingDirectory.toAbsolutePath());
                 return;
             case CD:
-                changeDirectory(args);
+                if (arguments.isEmpty()) return;
+                changeDirectory(arguments.getFirst());
                 return;
+            case null:
             default:
                 System.err.println(builtIn + ": command not found");
         }
@@ -77,18 +80,11 @@ public class Shell {
     /**
      * Helper for executing an external command, like <code>git</code> or <code>docker</code>.
      *
-     * @param command The external command to execute
-     * @param args    A single string containing all relevant command arguments
+     * @param argList A list of strings containing all relevant command arguments
      */
-    private void executeExternal(String command, String args) {
-        List<String> commandList = new ArrayList<>();
-        commandList.add(command);
-        if (args != null && args.length() > 1) {
-            final List<String> arguments = parseArgs(args);
-            commandList.addAll(arguments);
-        }
+    private void executeExternal(List<String> argList) {
         try {
-            Process process = new ProcessBuilder(commandList)
+            Process process = new ProcessBuilder(argList)
                     .directory(currentWorkingDirectory.toFile()) // runs command from current directory
                     .redirectErrorStream(true) // sends errors to input stream so they can be read with a single reader
                     .start();
@@ -97,7 +93,7 @@ public class Shell {
             while ((line = reader.readLine()) != null) System.out.println(line);
             process.waitFor(); // blocks until process finishes. returns an exit code that can be used later maybe
         } catch (Exception e) {
-            System.err.println("Error executing " + command + ": " + e.getMessage());
+            System.err.println("Error executing external program: " + e.getMessage());
         }
     }
 
@@ -169,15 +165,6 @@ public class Shell {
      * @param directory A string representation of the proposed new working directory
      */
     private void changeDirectory(String directory) {
-        directory = directory.trim();
-
-        // only argument should be target directory
-        String[] args = directory.split(" ");
-        if (args.length != 1) {
-            System.err.println("cd: too many arguments");
-            return;
-        }
-
         // interpolate with home directory when applicable
         directory = directory.replaceAll("^~", System.getenv("HOME"));
 
@@ -230,22 +217,19 @@ public class Shell {
     private void printType(String command) {
         if (command == null || command.isBlank()) return;
 
-        // if provided with arguments for some reason, ignore them
-        String cmd = command.split(" ")[0];
-
         // shell builtins
-        if (BuiltIn.parse(cmd) != null) {
-            System.out.println(cmd + " is a shell builtin");
+        if (BuiltIn.parse(command) != null) {
+            System.out.println(command + " is a shell builtin");
             return;
         }
 
         // external programs
-        String executablePath = PATH_SCANNER.findExecutablePath(cmd);
+        String executablePath = PATH_SCANNER.findExecutablePath(command);
         if (executablePath != null) {
-            System.out.println(cmd + " is " + executablePath);
+            System.out.println(command + " is " + executablePath);
             return;
         }
 
-        System.err.println(cmd + ": not found");
+        System.err.println(command + ": not found");
     }
 }
