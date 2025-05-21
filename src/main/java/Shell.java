@@ -58,9 +58,7 @@ public class Shell {
             case EXIT:
                 System.exit(0);
             case ECHO:
-                List<String> argList = parseArgs(args);
-                argList.forEach(System.out::print);
-                System.out.println();
+                System.out.println(String.join(" ", parseArgs(args)));
                 return;
             case TYPE:
                 printType(args);
@@ -124,6 +122,7 @@ public class Shell {
                     if (insideString) {
                         arguments.add(builder.toString());
                         builder = new StringBuilder();
+                        insideString = false;
                     } else {
                         insideString = true;
                     }
@@ -131,8 +130,8 @@ public class Shell {
                 case ' ':
                     if (insideString) {
                         builder.append(charAtIndex);
-                    } else {
-                        arguments.add(builder.toString());
+                    } else if (!builder.isEmpty()) {
+                        arguments.add(builder.toString().trim());
                         builder = new StringBuilder();
                     }
                     break;
