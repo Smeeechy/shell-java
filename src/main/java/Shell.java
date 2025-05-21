@@ -58,7 +58,9 @@ public class Shell {
             case EXIT:
                 System.exit(0);
             case ECHO:
-                System.out.println(args != null ? args : "");
+                List<String> argList = parseArgs(args);
+                argList.forEach(System.out::print);
+                System.out.println();
                 return;
             case TYPE:
                 printType(args);
@@ -108,7 +110,9 @@ public class Shell {
      * @return A list of individual argument strings
      */
     private List<String> parseArgs(String argsString) {
+        if (argsString == null || argsString.isEmpty()) return new ArrayList<>();
         argsString = argsString.trim().replace('\'', '\"');
+
         List<String> arguments = new ArrayList<>();
         int index = 0;
         StringBuilder builder = new StringBuilder();
