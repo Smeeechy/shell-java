@@ -119,13 +119,7 @@ public class Shell {
             char charAtIndex = argsString.charAt(index);
             switch (charAtIndex) {
                 case '\"':
-                    if (insideString) {
-                        arguments.add(builder.toString());
-                        builder = new StringBuilder();
-                        insideString = false;
-                    } else {
-                        insideString = true;
-                    }
+                    insideString = !insideString;
                     break;
                 case ' ':
                     if (insideString) {
