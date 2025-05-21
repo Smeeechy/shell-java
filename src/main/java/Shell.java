@@ -132,8 +132,8 @@ public class Shell {
                             default:
                                 builder.append(charAtIndex);
                         }
-                    } else if (index + 1 < argsString.length() && argsString.charAt(index + 1) == ' ') {
-                        builder.append(' ');
+                    } else if (index + 1 < argsString.length()) {
+                        builder.append(argsString.charAt(index + 1));
                         index++;
                     } else builder.append(charAtIndex);
                     break;
