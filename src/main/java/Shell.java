@@ -155,7 +155,7 @@ public class Shell {
         }
 
         // interpolate with home directory when applicable
-        directory = directory.replace("^~", System.getenv("HOME"));
+        directory = directory.replaceAll("^~", System.getenv("HOME"));
 
         // not a requirement but a nice QOL
         if (directory.equals("..")) {
