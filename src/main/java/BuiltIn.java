@@ -1,3 +1,6 @@
+/**
+ * Enumeration for shell builtins.
+ */
 public enum BuiltIn {
     EXIT,
     ECHO,

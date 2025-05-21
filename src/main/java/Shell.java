@@ -5,6 +5,11 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * An object that executes shell commands and tracks relevant state. Able to execute builtins (<code>exit</code>,
+ * <code>echo</code>, <code>type</code>, etc.) and external programs (<code>git</code>, <code>ls</code>,
+ * <code>cat</code>, etc.).
+ */
 public class Shell {
     private final PathScanner PATH_SCANNER;
 
@@ -15,19 +20,24 @@ public class Shell {
         this.currentWorkingDirectory = Path.of(System.getProperty("user.dir"));
     }
 
+    /**
+     * General purpose method for executing a shell command.
+     *
+     * @param command The raw input string containing commands, subcommands, and any relevant arguments.
+     */
     public void execute(String command) {
         String[] tokens = command.split(" ", 2);
         String cmd = tokens[0];
         String args = tokens.length > 1 ? tokens[1] : null;
 
-        // try to execute builtin
+        // check for and execute builtin
         BuiltIn builtIn = BuiltIn.parse(cmd);
         if (builtIn != null) {
             executeBuiltIn(builtIn, args);
             return;
         }
 
-        // try to execute external program
+        // check for and execute external program
         if (PATH_SCANNER.findExecutablePath(cmd) != null) {
             executeExternal(cmd, args);
             return;
@@ -37,6 +47,12 @@ public class Shell {
         System.err.println(cmd + ": command not found");
     }
 
+    /**
+     * Helper for executing a builtin command, like <code>cd</code> or <code>echo</code>.
+     *
+     * @param builtIn The builtin command to execute
+     * @param args    a single string containing all relevant command arguments
+     */
     private void executeBuiltIn(BuiltIn builtIn, String args) {
         switch (builtIn) {
             case EXIT:
@@ -58,6 +74,12 @@ public class Shell {
         }
     }
 
+    /**
+     * Helper for executing an external command, like <code>git</code> or <code>docker</code>.
+     *
+     * @param command The external command to execute
+     * @param args    A single string containing all relevant command arguments
+     */
     private void executeExternal(String command, String args) {
         List<String> commandList = new ArrayList<>();
         commandList.add(command);
@@ -67,18 +89,24 @@ public class Shell {
         }
         try {
             Process process = new ProcessBuilder(commandList)
-                    .directory(currentWorkingDirectory.toFile())
-                    .redirectErrorStream(true)
+                    .directory(currentWorkingDirectory.toFile()) // runs command from current directory
+                    .redirectErrorStream(true) // sends errors to input stream so they can be read with a single reader
                     .start();
             BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
             while ((line = reader.readLine()) != null) System.out.println(line);
-            process.waitFor();
+            process.waitFor(); // blocks until process finishes. returns an exit code that can be used later maybe
         } catch (Exception e) {
             System.err.println("Error executing " + command + ": " + e.getMessage());
         }
     }
 
+    /**
+     * Helper used to break down a single string of arguments into a list of tokens.
+     *
+     * @param argsString The string containing all command arguments
+     * @return A list of individual argument strings
+     */
     private List<String> parseArgs(String argsString) {
         argsString = argsString.trim().replace('\'', '\"');
         List<String> arguments = new ArrayList<>();
@@ -113,22 +141,31 @@ public class Shell {
         return arguments;
     }
 
+    /**
+     * Helper used to validate a string representing an absolute or relative path before updating the current working
+     * directory.
+     *
+     * @param directory A string representation of the proposed new working directory
+     */
     private void changeDirectory(String directory) {
         directory = directory.trim();
+
+        // only argument should be target directory
         String[] args = directory.split(" ");
         if (args.length != 1) {
             System.err.println("cd: too many arguments");
             return;
         }
 
-        if (directory.startsWith("~")) {
-            directory = directory.replaceFirst("~", System.getenv("HOME"));
-        }
+        // interpolate with home directory when applicable
+        directory = directory.replace("^~", System.getenv("HOME"));
 
+        // not a requirement but a nice QOL
         if (directory.equals("..")) {
             directory = currentWorkingDirectory.toAbsolutePath().getParent().toString();
         }
 
+        // handle navigating backwards relative to cwd
         if (directory.startsWith("../")) {
             Path tempWorkingDirectory = Path.of(currentWorkingDirectory.toUri());
             while (directory.startsWith("../")) {
@@ -139,10 +176,12 @@ public class Shell {
             directory = tempWorkingDirectory.toAbsolutePath() + directory;
         }
 
-        if (directory.startsWith(".")) {
+        // handle relative paths
+        if (directory.startsWith("./")) {
             directory = directory.replaceFirst("\\.", currentWorkingDirectory.toString());
         }
 
+        // validate final path
         Path directoryPath;
         try {
             directoryPath = Path.of(directory);
@@ -150,12 +189,10 @@ public class Shell {
             System.err.println("Error parsing path: " + directory);
             return;
         }
-
         if (!Files.exists(directoryPath)) {
             System.err.println("cd: " + directory + ": No such file or directory");
             return;
         }
-
         if (!Files.isDirectory(directoryPath)) {
             System.err.println("cd: " + directory + ": Not a directory");
             return;
@@ -164,16 +201,24 @@ public class Shell {
         this.currentWorkingDirectory = directoryPath;
     }
 
-    private void printType(String args) {
-        if (args == null || args.isBlank()) return;
+    /**
+     * Helper used to determine and print the type of a given command.
+     *
+     * @param command the command of which to print the type
+     */
+    private void printType(String command) {
+        if (command == null || command.isBlank()) return;
 
-        String cmd = args.split(" ")[0];
+        // if provided with arguments for some reason, ignore them
+        String cmd = command.split(" ")[0];
 
+        // shell builtins
         if (BuiltIn.parse(cmd) != null) {
             System.out.println(cmd + " is a shell builtin");
             return;
         }
 
+        // external programs
         String executablePath = PATH_SCANNER.findExecutablePath(cmd);
         if (executablePath != null) {
             System.out.println(cmd + " is " + executablePath);
