@@ -49,31 +49,23 @@ public class Shell {
     /**
      * Helper for executing a builtin command, like <code>cd</code> or <code>echo</code>.
      *
-     * @param builtIn The builtin command to execute
-     * @param args    a single string containing all relevant command arguments
+     * @param arguments a list of strings containing all relevant command arguments
      */
     private void executeBuiltIn(List<String> arguments) {
         BuiltIn builtIn = BuiltIn.parse(arguments.removeFirst());
         switch (builtIn) {
-            case EXIT:
-                System.exit(0);
-            case ECHO:
-                System.out.println(String.join(" ", arguments));
-                return;
-            case TYPE:
+            case EXIT -> System.exit(0);
+            case ECHO -> System.out.println(String.join(" ", arguments));
+            case TYPE -> {
                 if (arguments.isEmpty()) return;
                 printType(arguments.getFirst());
-                return;
-            case PWD:
-                System.out.println(currentWorkingDirectory.toAbsolutePath());
-                return;
-            case CD:
-                if (arguments.isEmpty()) return;
-                changeDirectory(arguments.getFirst());
-                return;
-            case null:
-            default:
-                System.err.println(builtIn + ": command not found");
+            }
+            case PWD -> System.out.println(currentWorkingDirectory.toAbsolutePath());
+            case CD -> {
+                if (arguments.isEmpty()) changeDirectory("~");
+                else changeDirectory(arguments.getFirst());
+            }
+            case null, default -> System.err.println(builtIn + ": no handler for builtin");
         }
     }
 
@@ -114,43 +106,37 @@ public class Shell {
         while (index < argsString.length()) {
             char charAtIndex = argsString.charAt(index);
             switch (charAtIndex) {
-                case '\\':
+                case '\\' -> {
                     if (withinDoubleQuotes && index + 1 < argsString.length()) {
                         char nextChar = argsString.charAt(index + 1);
                         switch (nextChar) {
-                            case '\\':
-                            case '$':
-                            case '\"':
-                            case '\n':
+                            case '\\', '$', '\"', '\n' -> {
                                 builder.append(nextChar);
                                 index++;
-                                break;
-                            default:
-                                builder.append(charAtIndex);
+                            }
+                            default -> builder.append(charAtIndex);
                         }
                     } else if (!withinSingleQuotes && index + 1 < argsString.length()) {
                         builder.append(argsString.charAt(index + 1));
                         index++;
                     } else builder.append(charAtIndex);
-                    break;
-                case '\'':
+                }
+                case '\'' -> {
                     if (withinDoubleQuotes) builder.append(charAtIndex);
                     else withinSingleQuotes = !withinSingleQuotes;
-                    break;
-                case '\"':
+                }
+                case '\"' -> {
                     if (withinSingleQuotes) builder.append(charAtIndex);
                     else withinDoubleQuotes = !withinDoubleQuotes;
-                    break;
-                case ' ':
-                    if (withinSingleQuotes || withinDoubleQuotes) {
-                        builder.append(charAtIndex);
-                    } else if (!builder.isEmpty()) {
+                }
+                case ' ' -> {
+                    if (withinSingleQuotes || withinDoubleQuotes) builder.append(charAtIndex);
+                    else if (!builder.isEmpty()) {
                         arguments.add(builder.toString().trim());
                         builder = new StringBuilder();
                     }
-                    break;
-                default:
-                    builder.append(charAtIndex);
+                }
+                default -> builder.append(charAtIndex);
             }
             index++;
         }
