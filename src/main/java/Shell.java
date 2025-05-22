@@ -1,9 +1,11 @@
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * An object that executes shell commands and tracks relevant state. Able to execute builtins (<code>exit</code>,
@@ -26,19 +28,37 @@ public class Shell {
      * @param command The raw input string containing commands, subcommands, and any relevant arguments.
      */
     public void execute(String command) {
-        List<String> arguments = parseArgs(command);
+        String redirect = null;
+        List<String> arguments = new ArrayList<>();
+
+        // check for redirects
+        List<String> parsed = parseArgs(command);
+        for (int i = 0; i < parsed.size(); i++) {
+            String arg = parsed.get(i);
+            if (arg.matches("^1?>$")) {
+                if (i + 1 == parsed.size()) {
+                    System.err.println("error: no output file provided");
+                    return;
+                }
+                redirect = parsed.get(i + 1);
+                break;
+            } else arguments.add(arg);
+        }
+
         String cmd = arguments.getFirst();
 
         // check for and execute builtin
         BuiltIn builtIn = BuiltIn.parse(cmd);
         if (builtIn != null) {
-            executeBuiltIn(arguments);
+            if (redirect == null) executeBuiltIn(arguments);
+            else handleRedirect(this::executeBuiltIn, arguments, redirect);
             return;
         }
 
         // check for and execute external program
         if (PATH_SCANNER.findExecutablePath(cmd) != null) {
-            executeExternal(arguments);
+            if (redirect == null) executeExternal(arguments);
+            else handleRedirect(this::executeExternal, arguments, redirect);
             return;
         }
 
@@ -56,10 +76,7 @@ public class Shell {
         switch (builtIn) {
             case EXIT -> System.exit(0);
             case ECHO -> System.out.println(String.join(" ", arguments));
-            case TYPE -> {
-                if (arguments.isEmpty()) return;
-                printType(arguments.getFirst());
-            }
+            case TYPE -> arguments.forEach(this::printType);
             case PWD -> System.out.println(currentWorkingDirectory.toAbsolutePath());
             case CD -> {
                 if (arguments.isEmpty()) changeDirectory("~");
@@ -201,8 +218,6 @@ public class Shell {
      * @param command the command of which to print the type
      */
     private void printType(String command) {
-        if (command == null || command.isBlank()) return;
-
         // shell builtins
         if (BuiltIn.parse(command) != null) {
             System.out.println(command + " is a shell builtin");
@@ -217,5 +232,35 @@ public class Shell {
         }
 
         System.err.println(command + ": not found");
+    }
+
+    /**
+     * Helper for handling temporary output redirection.
+     *
+     * @param callback  the command to execute
+     * @param arguments the list of arguments relevant to the command (if any)
+     * @param redirect  a string representing the desired output location
+     */
+    private void handleRedirect(Consumer<List<String>> callback, List<String> arguments, String redirect) {
+        // save reference to system.out for resetting later
+        PrintStream stdOut = System.out;
+
+        // temporarily set output to specified location
+        try {
+            System.setOut(new PrintStream(redirect));
+        } catch (Exception ignored) {
+            System.err.println("Error redirecting to " + redirect);
+            return;
+        }
+
+        // run the command
+        callback.accept(arguments);
+
+        // reset system.out to default
+        try {
+            System.setOut(stdOut);
+        } catch (Exception ignored) {
+            System.err.println("Error resetting system out");
+        }
     }
 }
