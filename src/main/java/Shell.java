@@ -139,12 +139,12 @@ public class Shell {
             final ProcessBuilder processBuilder = new ProcessBuilder(argList)
                     .directory(currentWorkingDirectory.toFile()); // runs command from current directory
             if (outRedirect != null) {
-                File outFile = Paths.get(currentWorkingDirectory.toString(), outRedirect).toFile();
+                File outFile = Paths.get(resolvePath(outRedirect)).toFile();
                 if (outAppend) processBuilder.redirectOutput(ProcessBuilder.Redirect.appendTo(outFile));
                 else processBuilder.redirectOutput(outFile);
             }
             if (errRedirect != null) {
-                File errFile = Paths.get(currentWorkingDirectory.toString(), errRedirect).toFile();
+                File errFile = Paths.get(resolvePath(errRedirect)).toFile();
                 if (errAppend) processBuilder.redirectError(ProcessBuilder.Redirect.appendTo(errFile));
                 else processBuilder.redirectError(errFile);
             }
@@ -226,29 +226,7 @@ public class Shell {
      * @param directory A string representation of the proposed new working directory
      */
     private void changeDirectory(String directory) {
-        // interpolate with home directory when applicable
-        directory = directory.replaceAll("^~", System.getenv("HOME"));
-
-        // not a requirement but a nice QOL
-        if (directory.equals("..")) {
-            directory = currentWorkingDirectory.toAbsolutePath().getParent().toString();
-        }
-
-        // handle navigating backwards relative to cwd
-        if (directory.startsWith("../")) {
-            Path tempWorkingDirectory = Path.of(currentWorkingDirectory.toUri());
-            while (directory.startsWith("../")) {
-                directory = directory.replaceFirst("\\.\\./", "");
-                tempWorkingDirectory = tempWorkingDirectory.getParent();
-                if (tempWorkingDirectory == null) tempWorkingDirectory = Path.of("/");
-            }
-            directory = tempWorkingDirectory.toAbsolutePath() + directory;
-        }
-
-        // handle relative paths
-        if (directory.startsWith("./")) {
-            directory = directory.replaceFirst("\\.", currentWorkingDirectory.toString());
-        }
+        directory = resolvePath(directory);
 
         // validate final path
         Path directoryPath;
@@ -268,6 +246,40 @@ public class Shell {
         }
 
         this.currentWorkingDirectory = directoryPath;
+    }
+
+    /**
+     * Helper for resolving a path against the current working directory.
+     *
+     * @param path A string representing an absolute or relative path
+     * @return A string representing the resolved path
+     */
+    private String resolvePath(String path) {
+        // interpolate with home directory when applicable
+        path = path.replaceAll("^~", System.getenv("HOME"));
+
+        // not a requirement but a nice QOL
+        if (path.equals("..")) {
+            path = currentWorkingDirectory.toAbsolutePath().getParent().toString();
+        }
+
+        // handle navigating backwards relative to cwd
+        if (path.startsWith("../")) {
+            Path tempWorkingDirectory = Path.of(currentWorkingDirectory.toUri());
+            while (path.startsWith("../")) {
+                path = path.replaceFirst("\\.\\./", "");
+                tempWorkingDirectory = tempWorkingDirectory.getParent();
+                if (tempWorkingDirectory == null) tempWorkingDirectory = Path.of("/");
+            }
+            path = tempWorkingDirectory.toAbsolutePath() + path;
+        }
+
+        // handle relative paths
+        if (path.startsWith("./")) {
+            path = path.replaceFirst("\\.", currentWorkingDirectory.toString());
+        }
+
+        return path;
     }
 
     /**
