@@ -3,6 +3,7 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +29,8 @@ public class Shell {
      */
     public void execute(String command) {
         final List<String> arguments = new ArrayList<>();
-        String redirect = null;
+        String outRedirect = null;
+        String errRedirect = null;
 
         // check for redirects
         final List<String> parsed = parseArgs(command);
@@ -39,8 +41,15 @@ public class Shell {
                     System.err.println("error: no output file provided");
                     return;
                 }
-                redirect = parsed.get(i + 1);
-                break;
+                outRedirect = parsed.get(i + 1);
+                i++;
+            } else if (arg.equals("2>")) {
+                if (i + 1 == parsed.size()) {
+                    System.err.println("error: no output file provided");
+                    return;
+                }
+                errRedirect = parsed.get(i + 1);
+                i++;
             } else arguments.add(arg);
         }
 
@@ -49,13 +58,13 @@ public class Shell {
         // check for and execute builtin
         final BuiltIn builtIn = BuiltIn.parse(cmd);
         if (builtIn != null) {
-            executeBuiltIn(arguments, redirect);
+            executeBuiltIn(arguments, outRedirect, errRedirect);
             return;
         }
 
         // check for and execute external program
         if (PATH_SCANNER.findExecutablePath(cmd) != null) {
-            executeExternal(arguments, redirect);
+            executeExternal(arguments, outRedirect, errRedirect);
             return;
         }
 
@@ -64,55 +73,75 @@ public class Shell {
     }
 
     /**
-     * Helper for executing a builtin command, like <code>cd</code> or <code>echo</code>.
+     * Helper for executing a builtin command, like <code>cd</code>, <code>echo</code>, and <code>exit</code>.
      *
-     * @param arguments a list of strings containing all relevant command arguments
+     * @param argList     a list of strings containing all relevant command arguments
+     * @param outRedirect the location to redirect stdout
+     * @param errRedirect the location to redirect stderr
      */
-    private void executeBuiltIn(List<String> arguments, String redirect) {
+    private void executeBuiltIn(List<String> argList, String outRedirect, String errRedirect) {
         final PrintStream stdOut = System.out;
-        if (redirect != null) {
+        final PrintStream stdErr = System.err;
+        if (outRedirect != null) {
             try {
-                System.setOut(new PrintStream(redirect));
+                System.setOut(new PrintStream(outRedirect));
             } catch (Exception ignored) {
-                System.out.println("Unable to redirect to " + redirect);
+                System.out.println("Unable to redirect stdout to " + outRedirect);
                 return;
             }
         }
-        final BuiltIn builtIn = BuiltIn.parse(arguments.removeFirst());
+        if (errRedirect != null) {
+            try {
+                System.setErr(new PrintStream(errRedirect));
+            } catch (Exception ignored) {
+                System.out.println("Unable to redirect stderr to " + errRedirect);
+                return;
+            }
+        }
+
+        final BuiltIn builtIn = BuiltIn.parse(argList.removeFirst());
         switch (builtIn) {
             case EXIT -> System.exit(0);
-            case ECHO -> System.out.println(String.join(" ", arguments));
-            case TYPE -> arguments.forEach(this::printType);
+            case ECHO -> System.out.println(String.join(" ", argList));
+            case TYPE -> argList.forEach(this::printType);
             case PWD -> System.out.println(currentWorkingDirectory.toAbsolutePath());
             case CD -> {
-                if (arguments.isEmpty()) changeDirectory("~");
-                else changeDirectory(arguments.getFirst());
+                if (argList.isEmpty()) changeDirectory("~");
+                else changeDirectory(argList.getFirst());
             }
             case null, default -> System.err.println(builtIn + ": no handler for builtin");
         }
-        if (redirect != null) System.setOut(stdOut);
+
+        // reset stdOut and stdErr
+        System.setOut(stdOut);
+        System.setErr(stdErr);
     }
 
     /**
-     * Helper for executing an external command, like <code>git</code> or <code>docker</code>.
+     * Helper for executing external commands, like <code>ls</code>, <code>cat</code>, and <code>git</code>.
      *
-     * @param argList A list of strings containing all relevant command arguments
+     * @param argList     A list of strings representing the command and all relevant arguments
+     * @param outRedirect the location to redirect stdout
+     * @param errRedirect the location to redirect stderr
      */
-    private void executeExternal(List<String> argList, String redirect) {
+    private void executeExternal(List<String> argList, String outRedirect, String errRedirect) {
         try {
+            // setup process according to inputs
             final ProcessBuilder processBuilder = new ProcessBuilder(argList)
                     .directory(currentWorkingDirectory.toFile()); // runs command from current directory
-            Process process;
-            if (redirect == null) process = processBuilder.redirectErrorStream(true).start();
-            else process = processBuilder.redirectOutput(Path.of(redirect).toFile()).start();
+            if (outRedirect != null) processBuilder.redirectOutput(Paths.get(outRedirect).toFile());
+            if (errRedirect != null) processBuilder.redirectError(Paths.get(errRedirect).toFile());
+            Process process = processBuilder
+                    .redirectErrorStream(outRedirect == null && errRedirect == null)
+                    .start();
 
+            // print output and errors
             String line;
             final BufferedReader outputReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             final BufferedReader errorReader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
             while ((line = outputReader.readLine()) != null) System.out.println(line);
             while ((line = errorReader.readLine()) != null) System.err.println(line);
-
-            process.waitFor(); // blocks until the command finishes
+            process.waitFor();
         } catch (Exception e) {
             System.err.println("Error executing external program: " + e.getMessage());
         }
