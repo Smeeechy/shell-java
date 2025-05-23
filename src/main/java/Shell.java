@@ -41,6 +41,7 @@ public class Shell {
                 break;
             }
             switch (arg) {
+                case ">>":
                 case "1>>":
                     outAppend = true;
                 case ">":
