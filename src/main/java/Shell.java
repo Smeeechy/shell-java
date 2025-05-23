@@ -139,17 +139,18 @@ public class Shell {
             final ProcessBuilder processBuilder = new ProcessBuilder(argList)
                     .directory(currentWorkingDirectory.toFile()); // runs command from current directory
             if (outRedirect != null) {
-                File outFile = Paths.get(outRedirect).toFile();
+                File outFile = Paths.get(currentWorkingDirectory.toString(), outRedirect).toFile();
                 if (outAppend) processBuilder.redirectOutput(ProcessBuilder.Redirect.appendTo(outFile));
                 else processBuilder.redirectOutput(outFile);
             }
             if (errRedirect != null) {
-                File errFile = Paths.get(errRedirect).toFile();
+                File errFile = Paths.get(currentWorkingDirectory.toString(), errRedirect).toFile();
                 if (errAppend) processBuilder.redirectError(ProcessBuilder.Redirect.appendTo(errFile));
                 else processBuilder.redirectError(errFile);
             }
-            Process process = processBuilder
-                    .redirectErrorStream(outRedirect == null && errRedirect == null).start();
+            final Process process = processBuilder
+                    .redirectErrorStream(outRedirect == null && errRedirect == null)
+                    .start();
 
             // print output and errors
             String line;
