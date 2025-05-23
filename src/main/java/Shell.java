@@ -89,17 +89,19 @@ public class Shell {
     private void executeBuiltIn(List<String> argList, String outRedirect, boolean outAppend, String errRedirect, boolean errAppend) {
         final PrintStream stdOut = System.out;
         final PrintStream stdErr = System.err;
+
         if (outRedirect != null) {
-            try (FileOutputStream fos = new FileOutputStream(outRedirect, outAppend)) {
-                System.setOut(new PrintStream(fos));
+            try {
+                System.setOut(new PrintStream(new FileOutputStream(resolvePath(outRedirect), outAppend)));
             } catch (Exception ignored) {
                 System.out.println("Unable to redirect stdout to " + outRedirect);
                 return;
             }
         }
+        
         if (errRedirect != null) {
-            try (FileOutputStream fos = new FileOutputStream(errRedirect, errAppend)) {
-                System.setErr(new PrintStream(fos));
+            try {
+                System.setErr(new PrintStream(new FileOutputStream(resolvePath(errRedirect), errAppend)));
             } catch (Exception ignored) {
                 System.out.println("Unable to redirect stderr to " + errRedirect);
                 return;
