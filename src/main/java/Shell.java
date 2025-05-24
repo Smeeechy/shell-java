@@ -24,9 +24,20 @@ public class Shell {
      * General-purpose method for executing a shell command.
      *
      * @param commandString The raw input string containing commands, subcommands, and any relevant arguments
+     * @param debug         Flag for printing commands in pipeline before execution
      */
-    public void execute(String commandString) {
-        final Command command = parseArgs(commandString);
+    public void execute(String commandString, boolean debug) {
+        final List<Command> commands = parseArgs(commandString);
+        if (debug) commands.forEach(System.out::println);
+        executePipeline(commands);
+    }
+
+    /**
+     * Executes a single shell command.
+     *
+     * @param command The command to be executed
+     */
+    private void executeCommand(Command command) {
         if (command == null || command.arguments().isEmpty()) return;
         final String cmd = command.arguments().getFirst();
 
@@ -45,6 +56,23 @@ public class Shell {
 
         // unknown command
         System.err.println(cmd + ": command not found");
+    }
+
+    /**
+     * Executes a series of commands, feeding the output of one command as input to the next.
+     * Redirections override this behavior.
+     *
+     * @param commands A list of commands to be executed as a pipeline
+     */
+    private void executePipeline(List<Command> commands) {
+        for (int i = 0; i < commands.size(); i++) {
+            Command command = commands.get(i);
+            if (command.outRedirect() != null && i < commands.size() - 1) {
+                Command nextCommand = commands.get(i + 1);
+                // TODO handle redirects here
+            }
+            executeCommand(command);
+        }
     }
 
     /**
@@ -136,12 +164,12 @@ public class Shell {
      * Helper used to break down a single string of arguments into a list of tokens.
      *
      * @param commandString A string containing all command arguments
-     * @return A list of individual argument strings
+     * @return A list of commands representing a pipeline
      */
-    private Command parseArgs(String commandString) {
+    private List<Command> parseArgs(String commandString) {
         if (commandString == null || commandString.isEmpty()) return null;
 
-        final List<String> parsed = new ArrayList<>();
+        final List<String> parsedArgs = new ArrayList<>();
         int index = 0;
         StringBuilder builder = new StringBuilder();
         boolean withinSingleQuotes = false;
@@ -175,7 +203,7 @@ public class Shell {
                 case ' ' -> {
                     if (withinSingleQuotes || withinDoubleQuotes) builder.append(charAtIndex);
                     else if (!builder.isEmpty()) {
-                        parsed.add(builder.toString().trim());
+                        parsedArgs.add(builder.toString().trim());
                         builder = new StringBuilder();
                     }
                 }
@@ -183,8 +211,36 @@ public class Shell {
             }
             index++;
         }
-        if (!builder.isEmpty()) parsed.add(builder.toString());
+        if (!builder.isEmpty()) parsedArgs.add(builder.toString());
+        return parsePipeline(parsedArgs);
+    }
 
+    /**
+     * Groups individual tokens into a list of commands
+     *
+     * @param parsedArgs A list of command arguments
+     * @return A list of commands representing a pipeline
+     */
+    private List<Command> parsePipeline(List<String> parsedArgs) {
+        List<Command> commands = new ArrayList<>();
+        List<String> commandArgs = new ArrayList<>();
+        for (String arg : parsedArgs) {
+            if (arg.equals("|")) {
+                commands.add(parseCommand(commandArgs));
+                commandArgs.clear();
+            } else commandArgs.add(arg);
+        }
+        if (!commandArgs.isEmpty()) commands.add(parseCommand(commandArgs));
+        return commands;
+    }
+
+    /**
+     * Parses a list of arguments into a single command object.
+     *
+     * @param parsed A list of strings representing the command and its arguments
+     * @return A command object formed from the given argument tokens
+     */
+    private Command parseCommand(List<String> parsed) {
         final List<String> arguments = new ArrayList<>();
         String outRedirect = null;
         boolean outAppend = false;
