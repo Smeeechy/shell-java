@@ -21,55 +21,25 @@ public class Shell {
     }
 
     /**
-     * General purpose method for executing a shell command.
+     * General-purpose method for executing a shell command.
      *
-     * @param command The raw input string containing commands, subcommands, and any relevant arguments.
+     * @param commandString The raw input string containing commands, subcommands, and any relevant arguments
      */
-    public void execute(String command) {
-        final List<String> arguments = new ArrayList<>();
-        String outRedirect = null;
-        boolean outAppend = false;
-        String errRedirect = null;
-        boolean errAppend = false;
-
-        // check for redirects
-        final List<String> parsed = parseArgs(command);
-        for (int i = 0; i < parsed.size(); i++) {
-            final String arg = parsed.get(i);
-            if (i == parsed.size() - 1) {
-                arguments.add(arg);
-                break;
-            }
-            switch (arg) {
-                case ">>":
-                case "1>>":
-                    outAppend = true;
-                case ">":
-                case "1>":
-                    outRedirect = parsed.get(++i);
-                    break;
-                case "2>>":
-                    errAppend = true;
-                case "2>":
-                    errRedirect = parsed.get(++i);
-                    break;
-                default:
-                    arguments.add(arg);
-            }
-        }
-
-        final String cmd = arguments.getFirst();
+    public void execute(String commandString) {
+        final Command command = parseArgs(commandString);
+        if (command == null || command.arguments().isEmpty()) return;
+        final String cmd = command.arguments().getFirst();
 
         // check for and execute builtin
         final BuiltIn builtIn = BuiltIn.parse(cmd);
         if (builtIn != null) {
-            executeBuiltIn(arguments, outRedirect, outAppend, errRedirect, errAppend);
+            executeBuiltIn(command);
             return;
         }
 
         // check for and execute external program
         if (PATH_SCANNER.findExecutablePath(cmd) != null) {
-            executeExternal(arguments, outRedirect, outAppend, errRedirect, errAppend);
+            executeExternal(command);
             return;
         }
 
@@ -80,43 +50,43 @@ public class Shell {
     /**
      * Helper for executing a builtin command, like <code>cd</code>, <code>echo</code>, and <code>exit</code>.
      *
-     * @param argList     a list of strings containing all relevant command arguments
-     * @param outRedirect the location to redirect stdout
-     * @param outAppend   flag for appending to outRedirect
-     * @param errRedirect the location to redirect stderr
-     * @param errAppend   flag for appending to errRedirect
+     * @param command An object containing the command and any relevant arguments
      */
-    private void executeBuiltIn(List<String> argList, String outRedirect, boolean outAppend, String errRedirect, boolean errAppend) {
+    private void executeBuiltIn(Command command) {
         final PrintStream stdOut = System.out;
         final PrintStream stdErr = System.err;
 
-        if (outRedirect != null) {
+        if (command.outRedirect() != null) {
             try {
-                System.setOut(new PrintStream(new FileOutputStream(resolvePath(outRedirect), outAppend)));
+                String outPath = resolvePath(command.outRedirect());
+                FileOutputStream outFos = new FileOutputStream(outPath, command.outAppend());
+                System.setOut(new PrintStream(outFos));
             } catch (Exception ignored) {
-                System.out.println("Unable to redirect stdout to " + outRedirect);
-                return;
-            }
-        }
-        
-        if (errRedirect != null) {
-            try {
-                System.setErr(new PrintStream(new FileOutputStream(resolvePath(errRedirect), errAppend)));
-            } catch (Exception ignored) {
-                System.out.println("Unable to redirect stderr to " + errRedirect);
+                System.out.println("Unable to redirect stdout to " + command.outRedirect());
                 return;
             }
         }
 
-        final BuiltIn builtIn = BuiltIn.parse(argList.removeFirst());
+        if (command.errRedirect() != null) {
+            try {
+                String errPath = resolvePath(command.errRedirect());
+                FileOutputStream errFos = new FileOutputStream(errPath, command.errAppend());
+                System.setErr(new PrintStream(errFos));
+            } catch (Exception ignored) {
+                System.out.println("Unable to redirect stderr to " + command.errRedirect());
+                return;
+            }
+        }
+
+        final BuiltIn builtIn = BuiltIn.parse(command.arguments().removeFirst());
         switch (builtIn) {
             case EXIT -> System.exit(0);
-            case ECHO -> System.out.println(String.join(" ", argList));
-            case TYPE -> argList.forEach(this::printType);
+            case ECHO -> System.out.println(String.join(" ", command.arguments()));
+            case TYPE -> command.arguments().forEach(this::printType);
             case PWD -> System.out.println(currentWorkingDirectory.toAbsolutePath());
             case CD -> {
-                if (argList.isEmpty()) changeDirectory("~");
-                else changeDirectory(argList.getFirst());
+                if (command.arguments().isEmpty()) changeDirectory("~");
+                else changeDirectory(command.arguments().getFirst());
             }
             case null, default -> System.err.println(builtIn + ": no handler for builtin");
         }
@@ -129,29 +99,25 @@ public class Shell {
     /**
      * Helper for executing external commands, like <code>ls</code>, <code>cat</code>, and <code>git</code>.
      *
-     * @param argList     A list of strings representing the command and all relevant arguments
-     * @param outRedirect the location to redirect stdout
-     * @param outAppend   flag for appending to outRedirect
-     * @param errRedirect the location to redirect stderr
-     * @param errAppend   flag for appending to errRedirect
+     * @param command An object containing the command and any relevant arguments
      */
-    private void executeExternal(List<String> argList, String outRedirect, boolean outAppend, String errRedirect, boolean errAppend) {
+    private void executeExternal(Command command) {
         try {
             // setup process according to inputs
-            final ProcessBuilder processBuilder = new ProcessBuilder(argList)
+            final ProcessBuilder processBuilder = new ProcessBuilder(command.arguments())
                     .directory(currentWorkingDirectory.toFile()); // runs command from current directory
-            if (outRedirect != null) {
-                File outFile = Paths.get(resolvePath(outRedirect)).toFile();
-                if (outAppend) processBuilder.redirectOutput(ProcessBuilder.Redirect.appendTo(outFile));
+            if (command.outRedirect() != null) {
+                File outFile = Paths.get(resolvePath(command.outRedirect())).toFile();
+                if (command.outAppend()) processBuilder.redirectOutput(ProcessBuilder.Redirect.appendTo(outFile));
                 else processBuilder.redirectOutput(outFile);
             }
-            if (errRedirect != null) {
-                File errFile = Paths.get(resolvePath(errRedirect)).toFile();
-                if (errAppend) processBuilder.redirectError(ProcessBuilder.Redirect.appendTo(errFile));
+            if (command.errRedirect() != null) {
+                File errFile = Paths.get(resolvePath(command.errRedirect())).toFile();
+                if (command.errAppend()) processBuilder.redirectError(ProcessBuilder.Redirect.appendTo(errFile));
                 else processBuilder.redirectError(errFile);
             }
             final Process process = processBuilder
-                    .redirectErrorStream(outRedirect == null && errRedirect == null)
+                    .redirectErrorStream(command.outRedirect() == null && command.errRedirect() == null)
                     .start();
 
             // print output and errors
@@ -169,23 +135,23 @@ public class Shell {
     /**
      * Helper used to break down a single string of arguments into a list of tokens.
      *
-     * @param command A string containing all command arguments
+     * @param commandString A string containing all command arguments
      * @return A list of individual argument strings
      */
-    private List<String> parseArgs(String command) {
-        if (command == null || command.isEmpty()) return new ArrayList<>();
+    private Command parseArgs(String commandString) {
+        if (commandString == null || commandString.isEmpty()) return null;
 
-        final List<String> arguments = new ArrayList<>();
+        final List<String> parsed = new ArrayList<>();
         int index = 0;
         StringBuilder builder = new StringBuilder();
         boolean withinSingleQuotes = false;
         boolean withinDoubleQuotes = false;
-        while (index < command.length()) {
-            final char charAtIndex = command.charAt(index);
+        while (index < commandString.length()) {
+            final char charAtIndex = commandString.charAt(index);
             switch (charAtIndex) {
                 case '\\' -> {
-                    if (withinDoubleQuotes && index + 1 < command.length()) {
-                        final char nextChar = command.charAt(index + 1);
+                    if (withinDoubleQuotes && index + 1 < commandString.length()) {
+                        final char nextChar = commandString.charAt(index + 1);
                         switch (nextChar) {
                             case '\\', '$', '\"', '\n' -> {
                                 builder.append(nextChar);
@@ -193,8 +159,8 @@ public class Shell {
                             }
                             default -> builder.append(charAtIndex);
                         }
-                    } else if (!withinSingleQuotes && index + 1 < command.length()) {
-                        builder.append(command.charAt(index + 1));
+                    } else if (!withinSingleQuotes && index + 1 < commandString.length()) {
+                        builder.append(commandString.charAt(index + 1));
                         index++;
                     } else builder.append(charAtIndex);
                 }
@@ -209,7 +175,7 @@ public class Shell {
                 case ' ' -> {
                     if (withinSingleQuotes || withinDoubleQuotes) builder.append(charAtIndex);
                     else if (!builder.isEmpty()) {
-                        arguments.add(builder.toString().trim());
+                        parsed.add(builder.toString().trim());
                         builder = new StringBuilder();
                     }
                 }
@@ -217,8 +183,41 @@ public class Shell {
             }
             index++;
         }
-        if (!builder.isEmpty()) arguments.add(builder.toString());
-        return arguments;
+        if (!builder.isEmpty()) parsed.add(builder.toString());
+
+        final List<String> arguments = new ArrayList<>();
+        String outRedirect = null;
+        boolean outAppend = false;
+        String errRedirect = null;
+        boolean errAppend = false;
+        for (int i = 0; i < parsed.size(); i++) {
+            final String arg = parsed.get(i);
+            if (i == parsed.size() - 1) {
+                arguments.add(arg);
+                break;
+            }
+
+            switch (arg) {
+                case ">>":
+                case "1>>":
+                    outAppend = true;
+                case ">":
+                case "1>":
+                    outRedirect = parsed.get(++i);
+                    break;
+
+                case "2>>":
+                    errAppend = true;
+                case "2>":
+                    errRedirect = parsed.get(++i);
+                    break;
+
+                default:
+                    arguments.add(arg);
+            }
+        }
+
+        return new Command(arguments, outRedirect, outAppend, errRedirect, errAppend);
     }
 
     /**
@@ -287,22 +286,22 @@ public class Shell {
     /**
      * Helper used to determine and print the type of a given command.
      *
-     * @param command the command of which to print the type
+     * @param commandString the command of which to print the type
      */
-    private void printType(String command) {
+    private void printType(String commandString) {
         // shell builtins
-        if (BuiltIn.parse(command) != null) {
-            System.out.println(command + " is a shell builtin");
+        if (BuiltIn.parse(commandString) != null) {
+            System.out.println(commandString + " is a shell builtin");
             return;
         }
 
         // external programs
-        final String executablePath = PATH_SCANNER.findExecutablePath(command);
+        final String executablePath = PATH_SCANNER.findExecutablePath(commandString);
         if (executablePath != null) {
-            System.out.println(command + " is " + executablePath);
+            System.out.println(commandString + " is " + executablePath);
             return;
         }
 
-        System.err.println(command + ": not found");
+        System.err.println(commandString + ": not found");
     }
 }
