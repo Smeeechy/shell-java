@@ -89,15 +89,10 @@ public class CommandRunner {
             }
         }
 
-        // redirect output (flushing as we write so external commands like head emit lines promptly)
+        // redirect output
         outputThread = new Thread(() -> {
-            try (InputStream is = process.getInputStream()) {
-                byte[] buffer = new byte[1024];
-                int bytesRead;
-                while ((bytesRead = is.read(buffer)) != -1) {
-                    outputStream.write(buffer, 0, bytesRead);
-                    outputStream.flush();
-                }
+            try (InputStream inputStream = process.getInputStream()) {
+                inputStream.transferTo(outputStream);
             } catch (IOException ignored) {
             }
         });
