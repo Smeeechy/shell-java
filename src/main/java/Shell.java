@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -41,6 +42,8 @@ public class Shell {
         List<CommandRunner> runners = commands.stream()
                 .map(command -> new CommandRunner(command, this))
                 .toList();
+        // collect piped output streams for later EOF signaling
+        List<PipedOutputStream> pipes = new ArrayList<>();
 
         // chain pipeline streams together
         for (int i = 1; i < commands.size(); i++) {
@@ -49,6 +52,7 @@ public class Shell {
             if (prev.getCommand().outRedirect() != null || current.getCommand().inRedirect() != null) continue;
             PipedInputStream pis = new PipedInputStream();
             PipedOutputStream pos = new PipedOutputStream(pis);
+            pipes.add(pos);
             prev.setOutputStream(pos);
             current.setInputStream(pis);
         }
@@ -58,11 +62,11 @@ public class Shell {
             runner.start();
         }
 
-        // if any upstream tail -f commands are used in the pipe, destroy them immediately
-        for (int i = 1; i < commands.size(); i++) {
-            Command prevCmd = commands.get(i - 1);
-            if (prevCmd.arguments().getFirst().equals("tail") && prevCmd.arguments().contains("-f")) {
-                runners.get(i - 1).destroy();
+        // signal EOF to downstream by closing all piped output streams
+        for (PipedOutputStream pos : pipes) {
+            try {
+                pos.close();
+            } catch (IOException ignored) {
             }
         }
         // now wait for the last command in the pipeline to finish
