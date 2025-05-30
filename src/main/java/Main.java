@@ -9,7 +9,7 @@ public class Main {
             System.out.print("$ ");
             String input = SCANNER.nextLine();
             if (input.isBlank()) continue;
-            SHELL.execute(input, false);
+            SHELL.execute(input);
         }
     }
 }
