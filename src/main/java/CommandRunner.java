@@ -60,13 +60,21 @@ public class CommandRunner {
 
         process = processBuilder.start();
 
-        // redirect input
-        new Thread(() -> {
-            try (OutputStream outputStream = process.getOutputStream()) {
-                inputStream.transferTo(outputStream);
+        // redirect input only if not default System.in (e.g., piped or file input)
+        if (inputStream != System.in) {
+            new Thread(() -> {
+                try (OutputStream procIn = process.getOutputStream()) {
+                    inputStream.transferTo(procIn);
+                } catch (IOException ignored) {
+                }
+            }).start();
+        } else {
+            // no custom input: close child stdin to prevent blocking
+            try {
+                process.getOutputStream().close();
             } catch (IOException ignored) {
             }
-        }).start();
+        }
 
         // redirect output
         new Thread(() -> {

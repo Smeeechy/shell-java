@@ -24,7 +24,6 @@ public class Shell {
      */
     public void execute(String commandString) {
         final List<Command> commands = CommandParser.parse(commandString);
-        commands.forEach(System.out::println);
         try {
             executePipeline(commands);
         } catch (Exception e) {
