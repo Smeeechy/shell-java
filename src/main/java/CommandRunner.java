@@ -91,16 +91,11 @@ public class CommandRunner {
 
         // redirect output (flushing as we write so external commands like head emit lines promptly)
         outputThread = new Thread(() -> {
-            String cmdName = command.arguments().getFirst();
-            boolean isTailFollow = cmdName.equals("tail") && command.arguments().contains("-f");
             try (InputStream is = process.getInputStream()) {
                 byte[] buffer = new byte[1024];
                 int bytesRead;
                 while ((bytesRead = is.read(buffer)) != -1) {
                     outputStream.write(buffer, 0, bytesRead);
-                    if (isTailFollow && buffer[bytesRead - 1] != '\n') {
-                        outputStream.write('\n');
-                    }
                     outputStream.flush();
                 }
             } catch (IOException ignored) {
