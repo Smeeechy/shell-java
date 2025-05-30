@@ -13,9 +13,6 @@ public class CommandRunner {
     private OutputStream outputStream;
     private OutputStream errorStream;
     private Thread builtInThread;
-    private Thread inputThread;
-    private Thread outputThread;
-    private Thread errorThread;
     private Process process;
 
     public CommandRunner(Command command, Shell shell) {
@@ -73,13 +70,12 @@ public class CommandRunner {
 
         // redirect input only if not default System.in (e.g., piped or file input)
         if (inputStream != System.in) {
-            inputThread = new Thread(() -> {
+            new Thread(() -> {
                 try (OutputStream procIn = process.getOutputStream()) {
                     inputStream.transferTo(procIn);
                 } catch (IOException ignored) {
                 }
-            });
-            inputThread.start();
+            }).start();
         } else {
             // no custom input: close child stdin to prevent blocking
             try {
@@ -89,22 +85,20 @@ public class CommandRunner {
         }
 
         // redirect output
-        outputThread = new Thread(() -> {
+        new Thread(() -> {
             try (InputStream inputStream = process.getInputStream()) {
                 inputStream.transferTo(outputStream);
             } catch (IOException ignored) {
             }
-        });
-        outputThread.start();
+        }).start();
 
         // redirect errors
-        errorThread = new Thread(() -> {
+        new Thread(() -> {
             try (InputStream inputStream = process.getErrorStream()) {
                 inputStream.transferTo(errorStream);
             } catch (IOException ignored) {
             }
-        });
-        errorThread.start();
+        }).start();
     }
 
     public int waitFor() throws InterruptedException {
@@ -114,9 +108,6 @@ public class CommandRunner {
         }
 
         int exitCode = process.waitFor();
-        if (inputThread != null) inputThread.join();
-        if (outputThread != null) outputThread.join();
-        if (errorThread != null) errorThread.join();
 
         // close redirected streams
         try {
