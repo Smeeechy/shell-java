@@ -58,15 +58,9 @@ public class Shell {
             runner.start();
         }
 
-        // if any upstream tail -f commands are used in the pipe, destroy them immediately
-        for (int i = 1; i < commands.size(); i++) {
-            Command prevCmd = commands.get(i - 1);
-            if (prevCmd.arguments().getFirst().equals("tail") && prevCmd.arguments().contains("-f")) {
-                runners.get(i - 1).destroy();
-            }
-        }
-        // now wait for the last command in the pipeline to finish
-        runners.get(runners.size() - 1).waitFor();
+        // wait for the last command in the pipeline, then clean up upstream
+        runners.getLast().waitFor();
+        for (int i = 0; i < runners.size() - 1; i++) runners.get(i).destroy();
     }
 
     Path getCwd() {
