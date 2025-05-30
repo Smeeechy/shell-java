@@ -79,7 +79,6 @@ public class CommandRunner {
                 } catch (IOException ignored) {
                 }
             });
-            inputThread.setDaemon(true);
             inputThread.start();
         } else {
             // no custom input: close child stdin to prevent blocking
@@ -115,7 +114,7 @@ public class CommandRunner {
         }
 
         int exitCode = process.waitFor();
-        // No join for inputThread (stdinThread) to avoid blocking on daemon thread
+        if (inputThread != null) inputThread.join();
         if (outputThread != null) outputThread.join();
         if (errorThread != null) errorThread.join();
 
