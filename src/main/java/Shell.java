@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -41,6 +42,8 @@ public class Shell {
         List<CommandRunner> runners = commands.stream()
                 .map(command -> new CommandRunner(command, this))
                 .toList();
+        // collect piped output streams for later EOF signaling
+        List<PipedOutputStream> pipes = new ArrayList<>();
 
         // chain pipeline streams together
         for (int i = 1; i < commands.size(); i++) {
@@ -49,6 +52,7 @@ public class Shell {
             if (prev.getCommand().outRedirect() != null || current.getCommand().inRedirect() != null) continue;
             PipedInputStream pis = new PipedInputStream();
             PipedOutputStream pos = new PipedOutputStream(pis);
+            pipes.add(pos);
             prev.setOutputStream(pos);
             current.setInputStream(pis);
         }
@@ -58,12 +62,15 @@ public class Shell {
             runner.start();
         }
 
-        // wait for the last command to finish, then shut down upstream processes
-        CommandRunner last = runners.get(runners.size() - 1);
-        last.waitFor();
-        for (int i = 0; i < runners.size() - 1; i++) {
-            runners.get(i).destroy();
+        // signal EOF to downstream by closing all piped output streams
+        for (PipedOutputStream pos : pipes) {
+            try {
+                pos.close();
+            } catch (IOException ignored) {
+            }
         }
+        // now wait for the last command in the pipeline to finish
+        runners.get(runners.size() - 1).waitFor();
     }
 
     Path getCwd() {
