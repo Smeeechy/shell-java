@@ -44,15 +44,7 @@ public class CommandRunner {
                 List<String> args = command.arguments().subList(1, command.arguments().size());
                 switch (builtIn) {
                     case EXIT -> System.exit(0);
-                    case ECHO -> {
-                        if (args.getFirst().equals("-n")) {
-                            args.removeFirst();
-                            String trailingNewlineRemoved = args.getLast().replaceAll("\n$", "");
-                            args.set(args.size() - 1, trailingNewlineRemoved);
-                        }
-                        String argString = String.join(" ", args);
-                        out.println(argString);
-                    }
+                    case ECHO -> out.println(String.join(" ", args));
                     case TYPE -> args.forEach(this::printType);
                     case PWD -> out.println(shell.getCwd().toAbsolutePath());
                     case CD -> {
