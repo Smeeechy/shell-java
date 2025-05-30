@@ -58,10 +58,9 @@ public class Shell {
             runner.start();
         }
 
-        // wait for each command to finish
-        for (CommandRunner runner : runners) {
-            runner.waitFor();
-        }
+        // wait for the last command in the pipeline, then clean up upstream
+        runners.getLast().waitFor();
+        for (int i = 0; i < runners.size() - 1; i++) runners.get(i).destroy();
     }
 
     Path getCwd() {

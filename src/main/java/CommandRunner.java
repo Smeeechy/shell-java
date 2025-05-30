@@ -131,6 +131,13 @@ public class CommandRunner {
     }
 
     /**
+     * Forcibly terminate the underlying process if it's still running.
+     */
+    public void destroy() {
+        if (process != null && process.isAlive()) process.destroy();
+    }
+
+    /**
      * Helper used to validate a string representing an absolute or relative path before updating the current working
      * directory.
      *
