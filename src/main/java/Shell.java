@@ -20,11 +20,9 @@ public class Shell {
      * General-purpose method for executing a shell command.
      *
      * @param commandString The raw input string containing commands, subcommands, and any relevant arguments
-     * @param debug         Flag for printing commands in pipeline before execution
      */
     public void execute(String commandString) {
         final List<Command> commands = CommandParser.parse(commandString);
-        commands.forEach(System.out::println);
         try {
             executePipeline(commands);
         } catch (Exception e) {
