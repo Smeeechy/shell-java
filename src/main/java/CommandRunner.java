@@ -183,7 +183,7 @@ public class CommandRunner {
     }
 
     private void debug(String msg) {
-        if (command.arguments().getFirst().equals("tail")) System.err.println("[DEBUG] " + msg);
+//        if (command.arguments().getFirst().equals("tail")) System.err.println("[DEBUG] " + msg);
     }
 
     /**
