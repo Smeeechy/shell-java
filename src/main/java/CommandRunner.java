@@ -67,8 +67,12 @@ public class CommandRunner {
         if (inputStream != System.in) {
             inputThread = new Thread(() -> {
                 try (OutputStream processOut = process.getOutputStream()) {
-                    inputStream.transferTo(processOut);
-                    processOut.flush();
+                    byte[] buffer = new byte[1024];
+                    int bytesRead;
+                    while ((bytesRead = inputStream.read(buffer)) != -1) {
+                        processOut.write(buffer, 0, bytesRead);
+                        processOut.flush();
+                    }
                 } catch (IOException ignored) {
                 }
             });
@@ -81,8 +85,12 @@ public class CommandRunner {
         // redirect output
         outputThread = new Thread(() -> {
             try (InputStream processIn = process.getInputStream()) {
-                processIn.transferTo(outputStream);
-                outputStream.flush();
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+                while ((bytesRead = processIn.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, bytesRead);
+                    outputStream.flush();
+                }
             } catch (IOException ignored) {
             }
         });
@@ -91,8 +99,12 @@ public class CommandRunner {
         // redirect errors
         errorThread = new Thread(() -> {
             try (InputStream processError = process.getErrorStream()) {
-                processError.transferTo(errorStream);
-                errorStream.flush();
+                byte[] buffer = new byte[1024];
+                int bytesRead;
+                while ((bytesRead = processError.read(buffer)) != -1) {
+                    errorStream.write(buffer, 0, bytesRead);
+                    errorStream.flush();
+                }
             } catch (IOException ignored) {
             }
         });
