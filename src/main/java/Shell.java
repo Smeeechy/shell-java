@@ -61,9 +61,9 @@ public class Shell {
             runner.start();
         }
 
-        // wait for each command to finish
-        for (CommandRunner runner : runners) {
-            runner.waitFor();
+        // wait in reverse for each command to finish
+        for (int i = runners.size() - 1; i >= 0; i--) {
+            runners.get(i).waitFor();
         }
     }
 
