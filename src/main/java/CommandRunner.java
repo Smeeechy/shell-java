@@ -39,8 +39,6 @@ public class CommandRunner {
     }
 
     public void start() throws IOException {
-        String cmdName = command.arguments().get(0);
-
         if (builtIn != null) {
             builtInThread = new Thread(() -> {
                 PrintStream out = new PrintStream(outputStream, true);
@@ -63,59 +61,27 @@ public class CommandRunner {
             return;
         }
 
-        // Debug: Log process start
-        System.err.println("[DEBUG] Starting process: " + String.join(" ", command.arguments()));
-        System.err.println("[DEBUG] Input stream type: " + inputStream.getClass().getSimpleName());
-        System.err.println("[DEBUG] Output stream type: " + outputStream.getClass().getSimpleName());
-
         process = processBuilder.start();
 
         // redirect input (if non-standard)
         if (inputStream != System.in) {
             inputThread = new Thread(() -> {
                 try (OutputStream processOut = process.getOutputStream()) {
-                    System.err.println("[DEBUG] " + cmdName + " input thread started, reading from " + inputStream.getClass().getSimpleName());
-
-                    // Use a buffer and flush frequently for better data flow
-                    byte[] buffer = new byte[1024];
-                    int bytesRead;
-                    while ((bytesRead = inputStream.read(buffer)) != -1) {
-                        processOut.write(buffer, 0, bytesRead);
-                        processOut.flush(); // Force flush after each write
-                        System.err.println("[DEBUG] " + cmdName + " transferred " + bytesRead + " bytes");
-                    }
-                    System.err.println("[DEBUG] " + cmdName + " input thread finished");
-                } catch (IOException e) {
-                    System.err.println("[DEBUG] " + cmdName + " input thread error: " + e.getMessage());
+                    inputStream.transferTo(processOut);
+                } catch (IOException ignored) {
                 }
             });
             inputThread.start();
         } else {
             // TODO this is not a good solution. some commands still need System.in
-            System.err.println("[DEBUG] " + cmdName + " closing stdin (no input redirect)");
             process.getOutputStream().close();
         }
 
         // redirect output
         outputThread = new Thread(() -> {
             try (InputStream processIn = process.getInputStream()) {
-                System.err.println("[DEBUG] " + cmdName + " output thread started, writing to " + outputStream.getClass().getSimpleName());
-
-                // Use a buffer and flush frequently
-                byte[] buffer = new byte[1024];
-                int bytesRead;
-                while ((bytesRead = processIn.read(buffer)) != -1) {
-                    outputStream.write(buffer, 0, bytesRead);
-                    if (outputStream instanceof PrintStream) {
-                        ((PrintStream) outputStream).flush();
-                    } else {
-                        outputStream.flush();
-                    }
-                    System.err.println("[DEBUG] " + cmdName + " output " + bytesRead + " bytes");
-                }
-                System.err.println("[DEBUG] " + cmdName + " output thread finished");
-            } catch (IOException e) {
-                System.err.println("[DEBUG] " + cmdName + " output thread error: " + e.getMessage());
+                processIn.transferTo(outputStream);
+            } catch (IOException ignored) {
             }
         });
         outputThread.start();
@@ -131,8 +97,6 @@ public class CommandRunner {
     }
 
     public int waitFor() throws InterruptedException {
-        String cmdName = command.arguments().get(0);
-
         if (builtInThread != null) {
             builtInThread.join();
             if (outputStream != System.out) {
@@ -145,38 +109,20 @@ public class CommandRunner {
             return 0;
         }
 
-        System.err.println("[DEBUG] Waiting for " + cmdName + " to complete");
         int exitCode = process.waitFor();
-        System.err.println("[DEBUG] " + cmdName + " exited with code " + exitCode);
 
         // wait for threads to complete
-        if (inputThread != null) {
-            System.err.println("[DEBUG] Waiting for " + cmdName + " input thread");
-            inputThread.join();
-        }
-        if (outputThread != null) {
-            System.err.println("[DEBUG] Waiting for " + cmdName + " output thread");
-            outputThread.join();
-        }
-        if (errorThread != null) {
-            errorThread.join();
-        }
+        if (inputThread != null) inputThread.join();
+        if (outputThread != null) outputThread.join();
+        if (errorThread != null) errorThread.join();
 
         // close piped/redirected streams
         try {
-            if (inputStream != System.in) {
-                System.err.println("[DEBUG] Closing input stream for " + cmdName);
-                inputStream.close();
-            }
-            if (outputStream != System.out) {
-                System.err.println("[DEBUG] Closing output stream for " + cmdName);
-                outputStream.close();
-            }
-            if (errorStream != System.err) {
-                errorStream.close();
-            }
+            if (inputStream != System.in) inputStream.close();
+            if (outputStream != System.out) outputStream.close();
+            if (errorStream != System.err) errorStream.close();
         } catch (IOException e) {
-            System.err.println("[DEBUG] Error closing streams for " + cmdName + ": " + e.getMessage());
+            System.err.println(e.getMessage());
         }
 
         return exitCode;
