@@ -66,8 +66,8 @@ public class CommandRunner {
         // redirect input (if non-standard)
         if (inputStream != System.in) {
             inputThread = new Thread(() -> {
-                try (OutputStream outputStream = process.getOutputStream()) {
-                    inputStream.transferTo(outputStream);
+                try (OutputStream processOut = process.getOutputStream()) {
+                    inputStream.transferTo(processOut);
                 } catch (IOException ignored) {
                 }
             });
@@ -79,8 +79,8 @@ public class CommandRunner {
 
         // redirect output
         outputThread = new Thread(() -> {
-            try (InputStream inputStream = process.getInputStream()) {
-                inputStream.transferTo(outputStream);
+            try (InputStream processIn = process.getInputStream()) {
+                processIn.transferTo(outputStream);
             } catch (IOException ignored) {
             }
         });
@@ -88,8 +88,8 @@ public class CommandRunner {
 
         // redirect errors
         errorThread = new Thread(() -> {
-            try (InputStream inputStream = process.getErrorStream()) {
-                inputStream.transferTo(errorStream);
+            try (InputStream processError = process.getErrorStream()) {
+                processError.transferTo(errorStream);
             } catch (IOException ignored) {
             }
         });
