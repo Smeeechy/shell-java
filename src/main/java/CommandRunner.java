@@ -68,6 +68,7 @@ public class CommandRunner {
             inputThread = new Thread(() -> {
                 try (OutputStream processOut = process.getOutputStream()) {
                     inputStream.transferTo(processOut);
+                    processOut.flush();
                 } catch (IOException ignored) {
                 }
             });
@@ -81,6 +82,7 @@ public class CommandRunner {
         outputThread = new Thread(() -> {
             try (InputStream processIn = process.getInputStream()) {
                 processIn.transferTo(outputStream);
+                outputStream.flush();
             } catch (IOException ignored) {
             }
         });
@@ -90,6 +92,7 @@ public class CommandRunner {
         errorThread = new Thread(() -> {
             try (InputStream processError = process.getErrorStream()) {
                 processError.transferTo(errorStream);
+                errorStream.flush();
             } catch (IOException ignored) {
             }
         });
