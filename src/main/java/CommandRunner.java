@@ -30,9 +30,12 @@ public class CommandRunner {
 
         // handle redirects when applicable
         try {
-            if (command.inRedirect() != null) this.inputStream = new FileInputStream(command.inRedirect());
-            if (command.outRedirect() != null) this.outputStream = new FileOutputStream(command.outRedirect());
-            if (command.errRedirect() != null) this.errorStream = new FileOutputStream(command.errRedirect());
+            if (command.inRedirect() != null)
+                this.inputStream = new FileInputStream(command.inRedirect());
+            if (command.outRedirect() != null)
+                this.outputStream = new FileOutputStream(command.outRedirect(), command.outAppend());
+            if (command.errRedirect() != null)
+                this.errorStream = new FileOutputStream(command.errRedirect(), command.errAppend());
         } catch (IOException e) {
             System.err.println(e.getMessage());
         }
@@ -58,6 +61,14 @@ public class CommandRunner {
                 }
             });
             builtInThread.start();
+            return;
+        }
+
+        // handles unknown commands
+        if (PATH_SCANNER.findExecutablePath(command.arguments().getFirst()) == null) {
+            String message = String.format("%s: command not found\n", command.arguments().getFirst());
+            byte[] messageBytes = message.getBytes();
+            errorStream.write(messageBytes, 0, messageBytes.length);
             return;
         }
 
@@ -121,6 +132,11 @@ public class CommandRunner {
                     System.err.println(e.getMessage());
                 }
             }
+            return 0;
+        }
+
+        // command was invalid
+        if (process == null) {
             return 0;
         }
 
