@@ -12,6 +12,9 @@ public class CommandRunner {
     private InputStream inputStream;
     private OutputStream outputStream;
     private OutputStream errorStream;
+    private Thread inputThread;
+    private Thread outputThread;
+    private Thread errorThread;
     private Thread builtInThread;
     private Process process;
 
@@ -60,44 +63,64 @@ public class CommandRunner {
 
         process = processBuilder.start();
 
-        // redirect input
-        new Thread(() -> {
-            try (OutputStream outputStream = process.getOutputStream()) {
-                inputStream.transferTo(outputStream);
-            } catch (IOException ignored) {
-            }
-        }).start();
+        // redirect input (if non-standard)
+        if (inputStream != System.in) {
+            inputThread = new Thread(() -> {
+                try (OutputStream outputStream = process.getOutputStream()) {
+                    inputStream.transferTo(outputStream);
+                } catch (IOException ignored) {
+                }
+            });
+            inputThread.start();
+        } else {
+            // TODO this is not a good solution. some commands still need System.in
+            process.getOutputStream().close();
+        }
 
         // redirect output
-        new Thread(() -> {
+        outputThread = new Thread(() -> {
             try (InputStream inputStream = process.getInputStream()) {
                 inputStream.transferTo(outputStream);
             } catch (IOException ignored) {
             }
-        }).start();
+        });
+        outputThread.start();
 
         // redirect errors
-        new Thread(() -> {
+        errorThread = new Thread(() -> {
             try (InputStream inputStream = process.getErrorStream()) {
                 inputStream.transferTo(errorStream);
             } catch (IOException ignored) {
             }
-        }).start();
+        });
+        errorThread.start();
     }
 
     public int waitFor() throws InterruptedException {
         if (builtInThread != null) {
             builtInThread.join();
+            if (outputStream != System.out) {
+                try {
+                    outputStream.close();
+                } catch (IOException e) {
+                    System.err.println(e.getMessage());
+                }
+            }
             return 0;
         }
 
         int exitCode = process.waitFor();
 
-        // close redirected streams
+        // wait for threads to complete
+        if (inputThread != null) inputThread.join();
+        if (outputThread != null) outputThread.join();
+        if (errorThread != null) errorThread.join();
+
+        // close piped/redirected streams
         try {
-            if (command.inRedirect() != null) inputStream.close();
-            if (command.outRedirect() != null) outputStream.close();
-            if (command.errRedirect() != null) errorStream.close();
+            if (inputStream != System.in) inputStream.close();
+            if (outputStream != System.out) outputStream.close();
+            if (errorStream != System.err) errorStream.close();
         } catch (IOException e) {
             System.err.println(e.getMessage());
         }
