@@ -66,7 +66,13 @@ public class CommandRunner {
                     }
                     case HISTORY -> {
                         List<String> history = shell.getHistory();
-                        for (int i = 0; i < history.size(); i++) out.println("    " + (i + 1) + "  " + history.get(i));
+                        int n = history.size();
+                        if (args.getFirst().matches("^\\d+$")) {
+                            n = Integer.parseInt(args.getFirst());
+                            if (n > history.size()) n = history.size();
+                        }
+                        for (int i = history.size() - n; i < history.size(); i++)
+                            out.println("    " + (i + 1) + "  " + history.get(i));
                     }
                     default -> err.println(builtIn + ": no handler for builtin");
                 }
