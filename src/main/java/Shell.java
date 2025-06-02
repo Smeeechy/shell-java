@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -11,9 +12,11 @@ import java.util.List;
  */
 public class Shell {
     private Path cwd;
+    private List<String> history;
 
     public Shell() {
         this.cwd = Path.of(System.getProperty("user.dir"));
+        this.history = new ArrayList<>();
     }
 
     /**
@@ -22,6 +25,7 @@ public class Shell {
      * @param commandString The raw input string containing commands, subcommands, and any relevant arguments
      */
     public void execute(String commandString) {
+        history.add(commandString);
         final List<Command> commands = CommandParser.parse(commandString);
         try {
             executePipeline(commands);
@@ -64,11 +68,15 @@ public class Shell {
         }
     }
 
-    Path getCwd() {
+    public Path getCwd() {
         return cwd;
     }
 
-    void setCwd(Path cwd) {
+    public void setCwd(Path cwd) {
         this.cwd = cwd;
+    }
+
+    public List<String> getHistory() {
+        return history;
     }
 }

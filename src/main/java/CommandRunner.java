@@ -41,6 +41,13 @@ public class CommandRunner {
         }
     }
 
+    /**
+     * Starts a number of threads to handle command execution.
+     *
+     * @throws IOException if error occurs during process execution
+     * @implNote some shells--including this one--print the calling history command as the last entry,
+     * while others omit it
+     */
     public void start() throws IOException {
         if (builtIn != null) {
             builtInThread = new Thread(() -> {
@@ -57,7 +64,10 @@ public class CommandRunner {
                         if (args.isEmpty()) changeDirectory("~");
                         else changeDirectory(args.getFirst());
                     }
-//                    case HISTORY -> {}
+                    case HISTORY -> {
+                        List<String> history = shell.getHistory();
+                        for (int i = 0; i < history.size(); i++) out.println("    " + (i + 1) + "  " + history.get(i));
+                    }
                     default -> err.println(builtIn + ": no handler for builtin");
                 }
             });
