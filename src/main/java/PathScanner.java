@@ -37,4 +37,8 @@ public class PathScanner {
     public String findExecutablePath(String command) {
         return CMD_TO_EXECUTABLE_PATH.get(command);
     }
+
+    public Map<String, String> getPathMap() {
+        return CMD_TO_EXECUTABLE_PATH;
+    }
 }
