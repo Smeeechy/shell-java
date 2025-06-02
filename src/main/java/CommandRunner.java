@@ -67,7 +67,7 @@ public class CommandRunner {
                     case HISTORY -> {
                         List<String> history = shell.getHistory();
                         int n = history.size();
-                        if (args.getFirst().matches("^\\d+$")) {
+                        if (!args.isEmpty() && args.getFirst().matches("^\\d+$")) {
                             n = Integer.parseInt(args.getFirst());
                             if (n > history.size()) n = history.size();
                         }
