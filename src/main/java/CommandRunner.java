@@ -57,6 +57,7 @@ public class CommandRunner {
                         if (args.isEmpty()) changeDirectory("~");
                         else changeDirectory(args.getFirst());
                     }
+//                    case HISTORY -> {}
                     default -> err.println(builtIn + ": no handler for builtin");
                 }
             });
@@ -66,9 +67,8 @@ public class CommandRunner {
 
         // handles unknown commands
         if (PATH_SCANNER.findExecutablePath(command.arguments().getFirst()) == null) {
-            String message = String.format("%s: command not found\n", command.arguments().getFirst());
-            byte[] messageBytes = message.getBytes();
-            errorStream.write(messageBytes, 0, messageBytes.length);
+            String message = command.arguments().getFirst() + ": command not found\n";
+            errorStream.write(message.getBytes(), 0, message.length());
             return;
         }
 
@@ -135,10 +135,8 @@ public class CommandRunner {
             return 0;
         }
 
-        // command was invalid
-        if (process == null) {
-            return 0;
-        }
+        // return exit code for 'command not found'
+        if (process == null) return 127;
 
         int exitCode = process.waitFor();
 
