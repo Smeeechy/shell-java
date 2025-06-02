@@ -1,15 +1,19 @@
-import java.util.Scanner;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
 
 public class Main {
-    private static final Scanner SCANNER = new Scanner(System.in);
     private static final Shell SHELL = new Shell();
 
     public static void main(String[] args) throws Exception {
-        while (true) {
-            System.out.print("$ ");
-            String input = SCANNER.nextLine();
-            if (input.isBlank()) continue;
-            SHELL.execute(input);
+        try (Terminal terminal = TerminalBuilder.terminal()) {
+            LineReader lineReader = LineReaderBuilder.builder().terminal(terminal).build();
+            while (true) {
+                String input = lineReader.readLine("$ ");
+                if (input.isBlank()) continue;
+                SHELL.execute(input);
+            }
         }
     }
 }
