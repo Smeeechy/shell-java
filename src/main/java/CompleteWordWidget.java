@@ -48,6 +48,8 @@ public class CompleteWordWidget implements Widget {
         }
 
         if (matches.isEmpty()) {
+            terminal.writer().print('\007');
+            terminal.writer().flush();
             tabCount = 0;
             return true;
         }
