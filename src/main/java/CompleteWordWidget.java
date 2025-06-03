@@ -20,13 +20,6 @@ public class CompleteWordWidget implements Widget {
 
     @Override
     public boolean apply() {
-        if (++tabCount == 1) {
-            // just print bell character on first tab
-            terminal.writer().print('\007');
-            terminal.writer().flush();
-            return true;
-        }
-
         // find prefix using current buffer and cursor position
         String buffer = lineReader.getBuffer().toString();
         int cursor = lineReader.getBuffer().cursor();
@@ -38,6 +31,21 @@ public class CompleteWordWidget implements Widget {
                 .filter(command -> command.startsWith(prefix))
                 .sorted()
                 .toList();
+
+        if (++tabCount == 1 && !matches.isEmpty()) {
+            // autocomplete if only one match
+            if (matches.size() == 1) {
+                lineReader.getBuffer().clear();
+                lineReader.getBuffer().write(matches.getFirst());
+                tabCount = 0;
+                return true;
+            }
+
+            // otherwise just print bell character on first tab
+            terminal.writer().print('\007');
+            terminal.writer().flush();
+            return true;
+        }
 
         if (matches.isEmpty()) {
             tabCount = 0;
