@@ -13,23 +13,41 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Main {
-    private static final Shell SHELL = new Shell();
-    private static final DefaultParser PARSER = new DefaultParser();
-
     public static void main(String[] args) throws Exception {
+        // disable warning logging. it breaks tests
         Logger.getLogger("org.jline").setLevel(Level.SEVERE);
-        PARSER.setEscapeChars(new char[0]);
-        final Map<String, String> executables = new PathScanner().getPathMap();
 
+        // prevents jline from modifying input strings before passing them to the shell
+        final DefaultParser parser = new DefaultParser();
+        parser.setEscapeChars(new char[0]);
+
+        // enables builtin autocomplete
+        final Completer builtInCompleter = new EnumCompleter(BuiltIn.class);
+
+        // enables external autocomplete
+        final Map<String, String> executables = new PathScanner().getPathMap();
+        final Completer externalCompleter = new StringsCompleter(executables.keySet());
+
+        // combines previous two
+        final Completer completer = new AggregateCompleter(builtInCompleter, externalCompleter);
+
+        // enables keyboard inputs for searching history and autocompletion
         try (Terminal terminal = TerminalBuilder.builder().system(true).build()) {
-            Completer builtInCompleter = new EnumCompleter(BuiltIn.class);
-            Completer externalCompleter = new StringsCompleter(executables.keySet());
-            Completer completer = new AggregateCompleter(builtInCompleter, externalCompleter);
-            LineReader lineReader = LineReaderBuilder.builder().terminal(terminal).parser(PARSER).completer(completer).build();
+            LineReader lineReader = LineReaderBuilder.builder()
+                    .terminal(terminal)
+                    .parser(parser)
+                    .completer(completer)
+//                    .option(LineReader.Option.DISABLE_EVENT_EXPANSION, true)
+//                    .option(LineReader.Option.AUTO_MENU, false)
+//                    .option(LineReader.Option.AUTO_LIST, false)
+                    .build();
+
+            // main REPL loop
+            final Shell shell = new Shell();
             while (true) {
                 String input = lineReader.readLine("$ ");
                 if (input.isBlank()) continue;
-                SHELL.execute(input);
+                shell.execute(input);
             }
         } catch (Exception ignored) {
         }
