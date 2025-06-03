@@ -1,46 +1,50 @@
-import org.jline.reader.Completer;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.Reference;
 import org.jline.reader.impl.DefaultParser;
-import org.jline.reader.impl.completer.AggregateCompleter;
-import org.jline.reader.impl.completer.EnumCompleter;
-import org.jline.reader.impl.completer.StringsCompleter;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 
-import java.util.Map;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        // disable warning logging. it breaks tests
+        // disable warning logging because it breaks tests
         Logger.getLogger("org.jline").setLevel(Level.SEVERE);
-
-        // prevents jline from modifying input strings before passing them to the shell
-        final DefaultParser parser = new DefaultParser();
-        parser.setEscapeChars(new char[0]);
-
-        // enables builtin autocomplete
-        final Completer builtInCompleter = new EnumCompleter(BuiltIn.class);
-
-        // enables external autocomplete
-        final Map<String, String> executables = new PathScanner().getPathMap();
-        final Completer externalCompleter = new StringsCompleter(executables.keySet());
-
-        // combines previous two
-        final Completer completer = new AggregateCompleter(builtInCompleter, externalCompleter);
 
         // enables keyboard inputs for searching history and autocompletion
         try (Terminal terminal = TerminalBuilder.builder().system(true).build()) {
+            // prevents jline from modifying input strings before passing them to the shell
+            final DefaultParser parser = new DefaultParser();
+            parser.setEscapeChars(new char[0]);
+
             LineReader lineReader = LineReaderBuilder.builder()
                     .terminal(terminal)
                     .parser(parser)
-                    .completer(completer)
-//                    .option(LineReader.Option.DISABLE_EVENT_EXPANSION, true)
-//                    .option(LineReader.Option.AUTO_MENU, false)
-//                    .option(LineReader.Option.AUTO_LIST, false)
+                    // these options prevent default tab completion functionality
+                    .option(LineReader.Option.DISABLE_EVENT_EXPANSION, true)
+                    .option(LineReader.Option.AUTO_MENU, false)
+                    .option(LineReader.Option.AUTO_LIST, false)
                     .build();
+
+            Set<String> commands = new HashSet<>();
+            commands.addAll(Arrays.stream(BuiltIn.values()).map(BuiltIn::name).toList());
+            commands.addAll(new PathScanner().getPathMap().keySet());
+            CompleteWordWidget completeWordWidget = new CompleteWordWidget(terminal, lineReader, commands);
+
+            // displays autocomplete options as required for tests
+            lineReader.getWidgets().put(LineReader.COMPLETE_WORD, completeWordWidget);
+            lineReader.getKeyMaps().get(LineReader.MAIN).bind(new Reference(LineReader.COMPLETE_WORD), "\t");
+
+            // resets tab count when user types anything but a tab
+            lineReader.getWidgets().put(LineReader.SELF_INSERT, () -> {
+                completeWordWidget.resetTabCount();
+                return lineReader.getBuiltinWidgets().get(LineReader.SELF_INSERT).apply();
+            });
 
             // main REPL loop
             final Shell shell = new Shell();
