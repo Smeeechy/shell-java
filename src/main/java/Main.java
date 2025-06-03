@@ -7,6 +7,7 @@ import org.jline.terminal.TerminalBuilder;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -32,8 +33,13 @@ public class Main {
                     .build();
 
             Set<String> commands = new HashSet<>();
-            commands.addAll(Arrays.stream(BuiltIn.values()).map(BuiltIn::name).toList());
-            commands.addAll(new PathScanner().getPathMap().keySet());
+            List<String> builtIns = Arrays.stream(BuiltIn.values())
+                    .map(BuiltIn::toString)
+                    .map(String::toLowerCase)
+                    .toList();
+            Set<String> externals = new PathScanner().getPathMap().keySet();
+            commands.addAll(builtIns);
+            commands.addAll(externals);
             CompleteWordWidget completeWordWidget = new CompleteWordWidget(terminal, lineReader, commands);
 
             // displays autocomplete options as required for tests
