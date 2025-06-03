@@ -36,7 +36,7 @@ public class CompleteWordWidget implements Widget {
             // autocomplete if only one match
             if (matches.size() == 1) {
                 lineReader.getBuffer().clear();
-                lineReader.getBuffer().write(matches.getFirst());
+                lineReader.getBuffer().write(matches.getFirst() + " ");
                 tabCount = 0;
                 return true;
             }
