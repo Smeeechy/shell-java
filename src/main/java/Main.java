@@ -32,7 +32,8 @@ public class Main {
                     .option(LineReader.Option.AUTO_LIST, false)
                     .build();
 
-            Set<String> commands = new HashSet<>();
+//            Set<String> commands = new HashSet<>();
+            Set<String> commands = new HashSet<>(List.of("xyz", "xyz_foo", "xyz_foo_bar", "xyz_foo_bar_baz"));
             List<String> builtIns = Arrays.stream(BuiltIn.values())
                     .map(BuiltIn::toString)
                     .map(String::toLowerCase)

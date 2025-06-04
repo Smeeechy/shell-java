@@ -33,10 +33,13 @@ public class CompleteWordWidget implements Widget {
                 .toList();
 
         if (++tabCount == 1 && !matches.isEmpty()) {
-            // autocomplete if only one match
-            if (matches.size() == 1) {
+            String shortestMatch = matches.getFirst();
+
+            // autocomplete if only one match or all matches share common prefix
+            boolean isCommonPrefix = matches.stream().allMatch(match -> match.startsWith(shortestMatch));
+            if (matches.size() == 1 || isCommonPrefix) {
                 lineReader.getBuffer().clear();
-                lineReader.getBuffer().write(matches.getFirst() + " ");
+                lineReader.getBuffer().write(shortestMatch + (isCommonPrefix ? "" : " "));
                 tabCount = 0;
                 return true;
             }
