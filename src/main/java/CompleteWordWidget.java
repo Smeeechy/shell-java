@@ -36,7 +36,8 @@ public class CompleteWordWidget implements Widget {
             String shortestMatch = matches.getFirst();
 
             // autocomplete if only one match or all matches share common prefix
-            boolean isCommonPrefix = matches.stream().allMatch(match -> match.startsWith(shortestMatch));
+            boolean isCommonPrefix = matches.size() > 1 &&
+                    matches.stream().allMatch(match -> match.startsWith(shortestMatch));
             if (matches.size() == 1 || isCommonPrefix) {
                 lineReader.getBuffer().clear();
                 lineReader.getBuffer().write(shortestMatch + (isCommonPrefix ? "" : " "));
