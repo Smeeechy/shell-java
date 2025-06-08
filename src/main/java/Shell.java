@@ -19,9 +19,7 @@ public class Shell {
         this.historyCursor = 0;
 
         final String histFile = System.getenv("HISTFILE");
-        System.out.println("histFile = " + histFile);
-        if (histFile == null) return;
-        readHistoryFromFile(histFile);
+        if (histFile != null) readHistoryFromFile(histFile);
     }
 
     /**
@@ -71,7 +69,10 @@ public class Shell {
 
     public void readHistoryFromFile(String fileName) {
         File file = new File(fileName);
-        if (!file.exists() || !file.isFile() || !file.canRead()) return;
+        if (!file.exists() || !file.isFile() || !file.canRead()) {
+            System.out.println(fileName + " does not exist or is not readable");
+            return;
+        }
         String lastCommand = history.getLast();
         List<String> newHistory = new ArrayList<>();
         newHistory.add(lastCommand);
@@ -80,7 +81,7 @@ public class Shell {
             String line;
             while ((line = reader.readLine()) != null) if (!line.isBlank()) newHistory.add(line);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.out.println(e.getMessage());
         }
 
         history = newHistory;
