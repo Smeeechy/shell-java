@@ -59,7 +59,8 @@ public class Main {
                 if (input.isBlank()) continue;
                 shell.execute(input);
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
         }
     }
 }
