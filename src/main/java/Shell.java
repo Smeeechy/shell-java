@@ -86,7 +86,7 @@ public class Shell {
         }
 
         history = newHistory;
-        historyCursor = 0;
+        historyCursor = history.size();
     }
 
     public void writeHistoryToFile(String fileName, boolean append) {
