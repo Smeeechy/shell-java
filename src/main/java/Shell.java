@@ -79,4 +79,8 @@ public class Shell {
     public List<String> getHistory() {
         return history;
     }
+
+    public void setHistory(List<String> history) {
+        this.history = history;
+    }
 }

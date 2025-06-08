@@ -1,6 +1,7 @@
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 public class CommandRunner {
@@ -65,14 +66,21 @@ public class CommandRunner {
                         else changeDirectory(args.getFirst());
                     }
                     case HISTORY -> {
-                        List<String> history = shell.getHistory();
-                        int n = history.size();
-                        if (!args.isEmpty() && args.getFirst().matches("^\\d+$")) {
-                            n = Integer.parseInt(args.getFirst());
-                            if (n > history.size()) n = history.size();
+                        final int historySize = shell.getHistory().size();
+                        if (args.isEmpty()) {
+                            printHistory(historySize);
+                            break;
                         }
-                        for (int i = history.size() - n; i < history.size(); i++)
-                            out.println("    " + (i + 1) + "  " + history.get(i));
+
+                        String firstArg = args.getFirst();
+                        if (firstArg.equals("-r") && args.size() > 1) {
+                            readHistoryFromFile(args.get(1));
+                        }
+
+                        if (firstArg.matches("^\\d+$")) {
+                            int n = Math.min(historySize, Integer.parseInt(firstArg));
+                            printHistory(n);
+                        }
                     }
                     default -> err.println(builtIn + ": no handler for builtin");
                 }
@@ -260,6 +268,31 @@ public class CommandRunner {
         }
 
         err.println(commandString + ": not found");
+    }
+
+    private void readHistoryFromFile(String fileName) {
+        File file = new File(fileName);
+        if (!file.exists() || !file.isFile() || !file.canRead()) return;
+        String lastCommand = shell.getHistory().getLast();
+        List<String> newHistory = new ArrayList<>();
+        newHistory.add(lastCommand);
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = reader.readLine()) != null)
+                if (!line.isBlank()) newHistory.add(line);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        shell.setHistory(newHistory);
+    }
+
+    private void printHistory(int nLastEntries) {
+        List<String> history = shell.getHistory();
+        PrintStream out = new PrintStream(outputStream, true);
+        for (int i = history.size() - nLastEntries; i < history.size(); i++)
+            out.println("    " + (i + 1) + "  " + history.get(i));
     }
 
     public Command getCommand() {
