@@ -11,14 +11,15 @@ import java.util.List;
 public class Shell {
     private Path cwd;
     private List<String> history;
+    private String histFile;
     private int historyCursor;
 
     public Shell() {
         this.cwd = Path.of(System.getProperty("user.dir"));
         this.history = new ArrayList<>();
+        this.histFile = System.getenv("HISTFILE");
         this.historyCursor = 0;
 
-        final String histFile = System.getenv("HISTFILE");
         if (histFile != null) readHistoryFromFile(histFile);
     }
 
@@ -110,5 +111,9 @@ public class Shell {
 
     public List<String> getHistory() {
         return history;
+    }
+
+    public String getHistFile() {
+        return histFile;
     }
 }

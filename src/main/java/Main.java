@@ -59,8 +59,8 @@ public class Main {
                 if (input.isBlank()) continue;
                 shell.execute(input);
             }
-        } catch (Exception e) {
-            System.err.println(e.getMessage());
+        } catch (Exception ignored) {
+            // TODO actually handle exceptions
         }
     }
 }

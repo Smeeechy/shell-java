@@ -56,7 +56,11 @@ public class CommandRunner {
                 // skip the command itself
                 List<String> args = command.arguments().subList(1, command.arguments().size());
                 switch (builtIn) {
-                    case EXIT -> System.exit(0);
+                    case EXIT -> {
+                        String histFile = shell.getHistFile();
+                        if (histFile != null) shell.writeHistoryToFile(histFile, true);
+                        System.exit(0);
+                    }
                     case ECHO -> out.println(String.join(" ", args));
                     case TYPE -> args.forEach(this::printType);
                     case PWD -> out.println(shell.getCwd().toAbsolutePath());
@@ -64,34 +68,7 @@ public class CommandRunner {
                         if (args.isEmpty()) changeDirectory("~");
                         else changeDirectory(args.getFirst());
                     }
-                    case HISTORY -> {
-                        final int historySize = shell.getHistory().size();
-                        if (args.isEmpty()) {
-                            printHistory(historySize);
-                            break;
-                        }
-
-                        String firstArg = args.getFirst();
-                        if (firstArg.equals("-r") && args.size() > 1) {
-                            shell.readHistoryFromFile(args.get(1));
-                            break;
-                        }
-
-                        if (firstArg.equals("-w") && args.size() > 1) {
-                            shell.writeHistoryToFile(args.get(1), false);
-                            break;
-                        }
-
-                        if (firstArg.equals("-a") && args.size() > 1) {
-                            shell.writeHistoryToFile(args.get(1), true);
-                            break;
-                        }
-
-                        if (firstArg.matches("^\\d+$")) {
-                            int n = Math.min(historySize, Integer.parseInt(firstArg));
-                            printHistory(n);
-                        }
-                    }
+                    case HISTORY -> history(args);
                     default -> err.println(builtIn + ": no handler for builtin");
                 }
             });
@@ -154,6 +131,35 @@ public class CommandRunner {
             }
         });
         errorThread.start();
+    }
+
+    private void history(List<String> args) {
+        final int historySize = shell.getHistory().size();
+        if (args.isEmpty()) {
+            printHistory(historySize);
+            return;
+        }
+
+        String firstArg = args.getFirst();
+        if (firstArg.equals("-r") && args.size() > 1) {
+            shell.readHistoryFromFile(args.get(1));
+            return;
+        }
+
+        if (firstArg.equals("-w") && args.size() > 1) {
+            shell.writeHistoryToFile(args.get(1), false);
+            return;
+        }
+
+        if (firstArg.equals("-a") && args.size() > 1) {
+            shell.writeHistoryToFile(args.get(1), true);
+            return;
+        }
+
+        if (firstArg.matches("^\\d+$")) {
+            int n = Math.min(historySize, Integer.parseInt(firstArg));
+            printHistory(n);
+        }
     }
 
     public int waitFor() throws InterruptedException {
