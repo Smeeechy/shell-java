@@ -18,7 +18,8 @@ public class Shell {
         this.history = new ArrayList<>();
         this.historyCursor = 0;
 
-        String histFile = System.getenv("HISTFILE");
+        final String histFile = System.getenv("HISTFILE");
+        System.out.println("histFile = " + histFile);
         if (histFile == null) return;
         readHistoryFromFile(histFile);
     }
