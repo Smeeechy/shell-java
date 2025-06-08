@@ -75,6 +75,12 @@ public class CommandRunner {
                         String firstArg = args.getFirst();
                         if (firstArg.equals("-r") && args.size() > 1) {
                             readHistoryFromFile(args.get(1));
+                            break;
+                        }
+
+                        if (firstArg.equals("-w") && args.size() > 1) {
+                            writeHistoryToFile(args.get(1));
+                            break;
                         }
 
                         if (firstArg.matches("^\\d+$")) {
@@ -286,6 +292,16 @@ public class CommandRunner {
         }
 
         shell.setHistory(newHistory);
+    }
+
+    private void writeHistoryToFile(String fileName) {
+        File file = new File(fileName);
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, !file.createNewFile()))) {
+            for (String line : shell.getHistory()) writer.write(line + '\n');
+            writer.flush();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void printHistory(int nLastEntries) {
