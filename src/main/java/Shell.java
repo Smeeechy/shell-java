@@ -1,6 +1,4 @@
-import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
+import java.io.*;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +17,10 @@ public class Shell {
         this.cwd = Path.of(System.getProperty("user.dir"));
         this.history = new ArrayList<>();
         this.historyCursor = 0;
+
+        String histFile = System.getenv("HISTFILE");
+        if (histFile == null) return;
+        readHistoryFromFile(histFile);
     }
 
     /**
@@ -60,13 +62,39 @@ public class Shell {
         }
 
         // start all commands
-        for (CommandRunner runner : runners) {
-            runner.start();
-        }
+        for (CommandRunner runner : runners) runner.start();
 
         // wait in reverse for each command to finish
-        for (int i = runners.size() - 1; i >= 0; i--) {
-            runners.get(i).waitFor();
+        for (int i = runners.size() - 1; i >= 0; i--) runners.get(i).waitFor();
+    }
+
+    public void readHistoryFromFile(String fileName) {
+        File file = new File(fileName);
+        if (!file.exists() || !file.isFile() || !file.canRead()) return;
+        String lastCommand = history.getLast();
+        List<String> newHistory = new ArrayList<>();
+        newHistory.add(lastCommand);
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = reader.readLine()) != null) if (!line.isBlank()) newHistory.add(line);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        history = newHistory;
+        historyCursor = 0;
+    }
+
+    public void writeHistoryToFile(String fileName, boolean append) {
+        File file = new File(fileName);
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, append))) {
+            List<String> historyDiff = history.subList(historyCursor, history.size());
+            for (String line : historyDiff) writer.write(line + '\n');
+            writer.flush();
+            historyCursor = history.size();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -80,17 +108,5 @@ public class Shell {
 
     public List<String> getHistory() {
         return history;
-    }
-
-    public void setHistory(List<String> history) {
-        this.history = history;
-    }
-
-    public int getHistoryCursor() {
-        return historyCursor;
-    }
-
-    public void setHistoryCursor(int historyCursor) {
-        this.historyCursor = historyCursor;
     }
 }

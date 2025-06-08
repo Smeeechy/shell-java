@@ -1,7 +1,6 @@
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 
 public class CommandRunner {
@@ -74,17 +73,17 @@ public class CommandRunner {
 
                         String firstArg = args.getFirst();
                         if (firstArg.equals("-r") && args.size() > 1) {
-                            readHistoryFromFile(args.get(1));
+                            shell.readHistoryFromFile(args.get(1));
                             break;
                         }
 
                         if (firstArg.equals("-w") && args.size() > 1) {
-                            writeHistoryToFile(args.get(1), false);
+                            shell.writeHistoryToFile(args.get(1), false);
                             break;
                         }
 
                         if (firstArg.equals("-a") && args.size() > 1) {
-                            writeHistoryToFile(args.get(1), true);
+                            shell.writeHistoryToFile(args.get(1), true);
                             break;
                         }
 
@@ -279,37 +278,6 @@ public class CommandRunner {
         }
 
         err.println(commandString + ": not found");
-    }
-
-    private void readHistoryFromFile(String fileName) {
-        File file = new File(fileName);
-        if (!file.exists() || !file.isFile() || !file.canRead()) return;
-        String lastCommand = shell.getHistory().getLast();
-        List<String> newHistory = new ArrayList<>();
-        newHistory.add(lastCommand);
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = reader.readLine()) != null)
-                if (!line.isBlank()) newHistory.add(line);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        shell.setHistory(newHistory);
-        shell.setHistoryCursor(newHistory.size());
-    }
-
-    private void writeHistoryToFile(String fileName, boolean append) {
-        File file = new File(fileName);
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, append))) {
-            List<String> historyDiff = shell.getHistory().subList(shell.getHistoryCursor(), shell.getHistory().size());
-            for (String line : historyDiff) writer.write(line + '\n');
-            writer.flush();
-            shell.setHistoryCursor(shell.getHistory().size());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private void printHistory(int nLastEntries) {
