@@ -69,10 +69,7 @@ public class Shell {
 
     public void readHistoryFromFile(String fileName) {
         File file = new File(fileName);
-        if (!file.exists() || !file.isFile() || !file.canRead()) {
-            System.err.println(fileName + " does not exist or is not readable");
-            return;
-        }
+        if (!file.exists() || !file.isFile() || !file.canRead()) return;
 
         List<String> newHistory = new ArrayList<>();
         if (!history.isEmpty()) {
