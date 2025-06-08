@@ -13,10 +13,12 @@ import java.util.List;
 public class Shell {
     private Path cwd;
     private List<String> history;
+    private int historyCursor;
 
     public Shell() {
         this.cwd = Path.of(System.getProperty("user.dir"));
         this.history = new ArrayList<>();
+        this.historyCursor = 0;
     }
 
     /**
@@ -82,5 +84,13 @@ public class Shell {
 
     public void setHistory(List<String> history) {
         this.history = history;
+    }
+
+    public int getHistoryCursor() {
+        return historyCursor;
+    }
+
+    public void setHistoryCursor(int historyCursor) {
+        this.historyCursor = historyCursor;
     }
 }

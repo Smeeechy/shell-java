@@ -297,13 +297,16 @@ public class CommandRunner {
         }
 
         shell.setHistory(newHistory);
+        shell.setHistoryCursor(newHistory.size());
     }
 
     private void writeHistoryToFile(String fileName, boolean append) {
         File file = new File(fileName);
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, append))) {
-            for (String line : shell.getHistory()) writer.write(line + '\n');
+            List<String> historyDiff = shell.getHistory().subList(shell.getHistoryCursor(), shell.getHistory().size());
+            for (String line : historyDiff) writer.write(line + '\n');
             writer.flush();
+            shell.setHistoryCursor(shell.getHistory().size());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
