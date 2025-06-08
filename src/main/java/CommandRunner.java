@@ -79,7 +79,12 @@ public class CommandRunner {
                         }
 
                         if (firstArg.equals("-w") && args.size() > 1) {
-                            writeHistoryToFile(args.get(1));
+                            writeHistoryToFile(args.get(1), false);
+                            break;
+                        }
+
+                        if (firstArg.equals("-a") && args.size() > 1) {
+                            writeHistoryToFile(args.get(1), true);
                             break;
                         }
 
@@ -294,9 +299,9 @@ public class CommandRunner {
         shell.setHistory(newHistory);
     }
 
-    private void writeHistoryToFile(String fileName) {
+    private void writeHistoryToFile(String fileName, boolean append) {
         File file = new File(fileName);
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, !file.createNewFile()))) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, append))) {
             for (String line : shell.getHistory()) writer.write(line + '\n');
             writer.flush();
         } catch (IOException e) {
