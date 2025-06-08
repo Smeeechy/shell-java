@@ -11,7 +11,7 @@ import java.util.List;
 public class Shell {
     private Path cwd;
     private List<String> history;
-    private String histFile;
+    private final String histFile;
     private int historyCursor;
 
     public Shell() {
